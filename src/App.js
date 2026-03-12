@@ -66,11 +66,6 @@ function useIsMobile() {
   return isMobile;
 }
 
-// ─── HOOK : scroll vers le bas quand le clavier iOS s'ouvre ─────────────────
-function useViewportHeight() {
-  // On n'utilise plus JS pour la hauteur — CSS 100dvh gère ça nativement
-  return null;
-}
 
 // ─── SPORTS AVATAR SVG ───────────────────────────────────────────────────────
 function SportsAvatar({ size = 40 }) {
