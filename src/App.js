@@ -21,6 +21,16 @@ const SYSTEM_PROMPT = `Tu es **SquadBet**, un analyste sportif professionnel ave
 
 **Sports couverts :** Football ⚽, Tennis 🎾, Basketball 🏀, Rugby 🏉, Hockey 🏒, MMA/Boxe 🥊
 
+**IMPORTANT — Données en temps réel :**
+Avant chaque analyse de match, tu DOIS utiliser web_search pour chercher :
+- Les résultats des 5 derniers matchs de chaque équipe
+- Les blessés et suspendus du moment
+- Les confrontations directes récentes (H2H)
+- Les cotes actuelles des bookmakers
+- Toute info récente (forme, contexte, déclarations d'entraîneurs)
+
+Tu bases ton analyse sur des données RÉELLES et ACTUELLES, pas sur ta mémoire.
+Tu cites tes sources (ex: "Selon L'Équipe du 10/03...").
 Tu parles français, tu es passionné mais rigoureux. Tu ne garantis JAMAIS un résultat.`;
 
 const SPORTS = [
@@ -414,15 +424,21 @@ export default function BettingAdvisor() {
       const res = await fetch("/api/chat", {
         method:"POST",
         headers:{ "Content-Type":"application/json" },
-        body:JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1200,
+        body:JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:3000,
           system: SYSTEM_PROMPT + `\n\nProfil utilisateur : pseudo "${profile.pseudo}", niveau "${profile.niveau}", bankroll actuelle ${bankroll}€.`,
           messages: updatedHist }),
       });
       const data = await res.json();
-      const txt = data.content?.[0]?.text||"Je n'ai pas pu analyser ça.";
-      const aiMsg = { role:"assistant", content:txt };
+      // Assemble tous les blocs texte (le bot peut faire web_search avant de répondre)
+      const txt = data.content
+        ?.filter(block => block.type === "text")
+        ?.map(block => block.text)
+        ?.join("\n")
+        || (data.error ? `⚠️ API : ${data.error.message || JSON.stringify(data.error)}` : "Je n'ai pas pu analyser ça.");
+      // Pour l'historique on garde le format attendu par l'API
+      const aiMsg = { role:"assistant", content: data.content || [{ type:"text", text:txt }] };
       setHistory([...updatedHist, aiMsg]);
-      setMessages(prev=>[...prev, aiMsg]);
+      setMessages(prev=>[...prev, { role:"assistant", content:txt }]);
     } catch(err) {
       const errMsg = err?.message || String(err);
       setMessages(prev=>[...prev, { role:"assistant", content:`⚠️ Erreur : ${errMsg}` }]);
