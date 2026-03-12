@@ -473,7 +473,6 @@ export default function BettingAdvisor() {
   };
 
   // ── LAYOUT VARS ────────────────────────────────────────────────────────────
-  const BOTTOM_NAV_H = isMobile ? 64 : 0;
   const SIDEBAR_W = isMobile ? 0 : 230;
   const appHeight = isMobile ? vh : "100vh";
 
