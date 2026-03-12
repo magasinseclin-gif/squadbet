@@ -435,6 +435,40 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
   );
 }
 
+
+function ComboCalc({ bankroll }) {
+  const [legs, setLegs] = useState([{ match:"PSG vs Lyon", cote:1.65 }, { match:"Real vs Barça", cote:2.10 }]);
+  const [mise, setMise] = useState(20);
+  const totalCote = legs.reduce((a,l)=>a*l.cote,1);
+  const gainNet = (mise*totalCote-mise).toFixed(2);
+  const addLeg = () => setLegs([...legs, { match:"", cote:1.50 }]);
+  const removeLeg = i => setLegs(legs.filter((_,idx)=>idx!==i));
+  const updateLeg = (i,f,v) => setLegs(legs.map((l,idx)=>idx===i?{...l,[f]:f==="match"?v:+v}:l));
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+      {legs.map((leg,i) => (
+        <div key={i} style={{ display:"flex", gap:8, alignItems:"center" }}>
+          <input style={{ ...s.numInput, flex:1 }} placeholder="Match" value={leg.match} onChange={e=>updateLeg(i,"match",e.target.value)} />
+          <input style={{ ...s.numInput, width:70 }} type="number" step="0.05" value={leg.cote} onChange={e=>updateLeg(i,"cote",e.target.value)} inputMode="decimal" />
+          <button style={s.removeBtn} onClick={()=>removeLeg(i)}>✗</button>
+        </div>
+      ))}
+      <button style={s.addLegBtn} onClick={addLeg}>+ Ajouter une sélection</button>
+      <div style={s.calcField}>
+        <label style={s.calcLabel}>Mise : {mise}€</label>
+        <input type="range" min={5} max={Math.max(bankroll,50)} value={mise} onChange={e=>setMise(+e.target.value)} style={s.slider} />
+      </div>
+      <div style={s.calcResult}>
+        <div style={s.calcRow}><span>Cote combinée</span><span style={{ color:"#D4AF37", fontWeight:700 }}>@{totalCote.toFixed(2)}</span></div>
+        <div style={{ ...s.calcRow, background:"rgba(212,175,55,0.1)", padding:"12px 14px", borderRadius:10 }}>
+          <span style={{ fontWeight:600 }}>Gain potentiel</span>
+          <span style={{ color:"#22c55e", fontWeight:700, fontSize:18 }}>+{gainNet}€</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── ONBOARDING ──────────────────────────────────────────────────────────────
 function OnboardingScreen({ onComplete }) {
   const [step, setStep] = useState(1);
