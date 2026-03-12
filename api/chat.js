@@ -9,17 +9,19 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Convertit le format Anthropic → format Gemini
     const { messages, system, max_tokens } = req.body;
 
-    // Construit le contenu Gemini : system prompt + historique
     const contents = messages.map(msg => ({
       role: msg.role === "assistant" ? "model" : "user",
-      parts: [{ text: typeof msg.content === "string" ? msg.content : msg.content.map(b => b.text || "").join("") }]
+      parts: [{ text: typeof msg.content === "string"
+        ? msg.content
+        : Array.isArray(msg.content)
+          ? msg.content.map(b => b.text || "").join("")
+          : String(msg.content) }]
     }));
 
     const geminiBody = {
-      system_instruction: system ? { parts: [{ text: system }] } : undefined,
+      ...(system ? { system_instruction: { parts: [{ text: system }] } } : {}),
       contents,
       tools: [{ google_search: {} }],
       generationConfig: {
@@ -28,8 +30,9 @@ export default async function handler(req, res) {
       },
     };
 
+    // Gemini 1.5 Flash — 1500 req/jour gratuites
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -40,16 +43,16 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     if (!response.ok) {
-      return res.status(response.status).json({ error: data.error?.message || "Erreur Gemini" });
+      return res.status(response.status).json({
+        error: data.error?.message || JSON.stringify(data.error) || "Erreur Gemini"
+      });
     }
 
-    // Extrait le texte de la réponse Gemini
     const text = data.candidates?.[0]?.content?.parts
       ?.filter(p => p.text)
       ?.map(p => p.text)
       ?.join("\n") || "Je n'ai pas pu analyser ça.";
 
-    // Retourne dans le format attendu par le front (compatible Anthropic)
     return res.status(200).json({
       content: [{ type: "text", text }]
     });

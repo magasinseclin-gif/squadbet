@@ -117,92 +117,320 @@ function SportsAvatar({ size = 40 }) {
 }
 
 // ─── CALCULATORS ─────────────────────────────────────────────────────────────
-function KellyCalc({ bankroll }) {
-  const [prob, setProb] = useState(55);
-  const [cote, setCote] = useState(1.90);
-  const edge = (prob / 100) * cote - 1;
-  const kelly = edge > 0 ? (edge / (cote - 1)) * 100 : 0;
-  const mise = ((kelly / 2) / 100) * bankroll;
-  return (
-    <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-      <div style={s.calcField}>
-        <label style={s.calcLabel}>Probabilité estimée : <strong style={{ color:"#D4AF37" }}>{prob}%</strong></label>
-        <input type="range" min={10} max={90} value={prob} onChange={e=>setProb(+e.target.value)} style={s.slider} />
-      </div>
-      <div style={s.calcField}>
-        <label style={s.calcLabel}>Cote bookmaker : <strong style={{ color:"#D4AF37" }}>{cote}</strong></label>
-        <input type="range" min={1.1} max={5} step={0.05} value={cote} onChange={e=>setCote(+e.target.value)} style={s.slider} />
-      </div>
-      <div style={s.calcResult}>
-        <div style={s.calcRow}><span>Edge</span><span style={{ color:edge>0?"#22c55e":"#ef4444", fontWeight:700 }}>{edge>0?"+":""}{(edge*100).toFixed(1)}%</span></div>
-        <div style={s.calcRow}><span>Kelly complet</span><span style={{ color:"#D4AF37", fontWeight:700 }}>{kelly.toFixed(1)}%</span></div>
-        <div style={{ ...s.calcRow, background:"rgba(212,175,55,0.1)", padding:"12px 14px", borderRadius:10 }}>
-          <span style={{ fontWeight:600 }}>½ Kelly recommandé</span>
-          <span style={{ color:"#D4AF37", fontWeight:700, fontSize:18 }}>{mise.toFixed(2)}€</span>
-        </div>
-        {edge<=0 && <div style={{ color:"#ef4444", fontSize:12, textAlign:"center" }}>⚠️ Pas de value — pari déconseillé</div>}
-      </div>
-    </div>
-  );
-}
 
-function ValueBetCalc() {
-  const [coteBookie, setCoteBookie] = useState(2.10);
-  const [probPerso, setProbPerso] = useState(55);
-  const cotejuste = (100/probPerso).toFixed(2);
-  const valueEdge = ((probPerso/100)*coteBookie-1)*100;
-  const isValue = valueEdge > 0;
+// Kelly simplifié : l'utilisateur entre sa mise et la cote, Kelly dit si c'est bien
+function KellyCalc({ bankroll }) {
+  const [mise, setMise] = useState(20);
+  const [cote, setCote] = useState(1.90);
+  const [confiance, setConfiance] = useState("moyen");
+
+  const confianceMap = { faible: 40, moyen: 55, eleve: 68 };
+  const prob = confianceMap[confiance] / 100;
+  const edge = prob * cote - 1;
+  const kellyPct = edge > 0 ? (edge / (cote - 1)) * 100 : 0;
+  const kellyMise = ((kellyPct / 2) / 100) * bankroll;
+  const gainPotentiel = ((cote - 1) * mise).toFixed(2);
+  const misePct = bankroll > 0 ? ((mise / bankroll) * 100).toFixed(1) : 0;
+  const verdict = edge > 0
+    ? mise <= kellyMise * 1.5 ? "✅ Mise raisonnable" : "⚠️ Mise trop élevée"
+    : "❌ Pas de value — déconseillé";
+  const verdictColor = edge > 0
+    ? mise <= kellyMise * 1.5 ? "#22c55e" : "#f59e0b"
+    : "#ef4444";
+
   return (
-    <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+    <div style={{ display:"flex", flexDirection:"column", gap:18 }}>
+      {/* Explication simple */}
+      <div style={{ background:"rgba(212,175,55,0.06)", border:"1px solid rgba(212,175,55,0.15)", borderRadius:10, padding:"12px 14px" }}>
+        <div style={{ fontSize:12, color:"rgba(255,255,255,0.5)", lineHeight:1.6 }}>
+          💡 <strong style={{ color:"rgba(255,255,255,0.8)" }}>Comment ça marche ?</strong> Tu entres ta mise et la cote. Kelly calcule si ta mise est raisonnable selon ton niveau de confiance.
+        </div>
+      </div>
+
+      {/* Mise */}
+      <div style={s.calcField}>
+        <label style={s.calcLabel}>Ma mise</label>
+        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+          <input type="number" inputMode="numeric" value={mise}
+            onChange={e=>setMise(Math.max(1,+e.target.value))}
+            style={{ ...s.numInput, flex:1 }} />
+          <span style={{ color:"#D4AF37", fontWeight:700, fontSize:15 }}>€</span>
+        </div>
+        <div style={{ fontSize:11, color:"rgba(255,255,255,0.3)", marginTop:4 }}>
+          Soit {misePct}% de ta bankroll ({bankroll}€)
+        </div>
+      </div>
+
+      {/* Cote */}
       <div style={s.calcField}>
         <label style={s.calcLabel}>Cote proposée par le bookie</label>
-        <input type="number" step="0.05" value={coteBookie} onChange={e=>setCoteBookie(+e.target.value)} style={s.numInput} inputMode="decimal" />
+        <input type="number" step="0.05" inputMode="decimal" value={cote}
+          onChange={e=>setCote(Math.max(1.01,+e.target.value))}
+          style={s.numInput} />
       </div>
+
+      {/* Confiance */}
       <div style={s.calcField}>
-        <label style={s.calcLabel}>Ta probabilité : <strong style={{ color:"#D4AF37" }}>{probPerso}%</strong></label>
-        <input type="range" min={10} max={90} value={probPerso} onChange={e=>setProbPerso(+e.target.value)} style={s.slider} />
-      </div>
-      <div style={s.calcResult}>
-        <div style={s.calcRow}><span>Cote juste</span><span style={{ color:"#a78bfa", fontWeight:700 }}>@{cotejuste}</span></div>
-        <div style={s.calcRow}><span>Cote bookie</span><span style={{ fontWeight:700 }}>@{coteBookie}</span></div>
-        <div style={{ ...s.calcRow, background:isValue?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)", padding:"12px 14px", borderRadius:10, border:`1px solid ${isValue?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"}` }}>
-          <span style={{ fontWeight:600 }}>{isValue?"✅ VALUE BET":"❌ Pas de value"}</span>
-          <span style={{ color:isValue?"#22c55e":"#ef4444", fontWeight:700, fontSize:18 }}>{valueEdge>=0?"+":""}{valueEdge.toFixed(1)}%</span>
+        <label style={s.calcLabel}>Mon niveau de confiance</label>
+        <div style={{ display:"flex", gap:8 }}>
+          {[["faible","🧊 Faible"],["moyen","⚡ Moyen"],["eleve","🔥 Élevé"]].map(([k,l])=>(
+            <button key={k}
+              style={{ flex:1, padding:"10px 6px", borderRadius:10, border:`1px solid ${confiance===k?"rgba(212,175,55,0.5)":"rgba(255,255,255,0.08)"}`,
+                background:confiance===k?"rgba(212,175,55,0.15)":"transparent",
+                color:confiance===k?"#D4AF37":"rgba(255,255,255,0.4)",
+                fontSize:12, fontWeight:confiance===k?700:400, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", minHeight:44 }}
+              onClick={()=>setConfiance(k)}>{l}
+            </button>
+          ))}
         </div>
+      </div>
+
+      {/* Résultat */}
+      <div style={{ background:"rgba(255,255,255,0.03)", border:`1px solid ${verdictColor}40`, borderRadius:12, padding:"16px" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+          <span style={{ fontSize:15, fontWeight:700, color:verdictColor }}>{verdict}</span>
+        </div>
+        <div style={s.calcRow}>
+          <span>Gain potentiel</span>
+          <span style={{ color:"#22c55e", fontWeight:700 }}>+{gainPotentiel}€</span>
+        </div>
+        <div style={s.calcRow}>
+          <span>Mise Kelly idéale</span>
+          <span style={{ color:"#D4AF37", fontWeight:700 }}>{kellyMise.toFixed(2)}€</span>
+        </div>
+        {edge <= 0 && (
+          <div style={{ fontSize:12, color:"#ef4444", marginTop:8, textAlign:"center" }}>
+            La cote ne couvre pas le risque selon ton niveau de confiance
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function ComboCalc({ bankroll }) {
-  const [legs, setLegs] = useState([{ match:"PSG vs Lyon", cote:1.65 }, { match:"Real vs Barça", cote:2.10 }]);
-  const [mise, setMise] = useState(20);
-  const totalCote = legs.reduce((a,l)=>a*l.cote,1);
-  const gainNet = (mise*totalCote-mise).toFixed(2);
-  const addLeg = () => setLegs([...legs, { match:"", cote:1.50 }]);
-  const removeLeg = i => setLegs(legs.filter((_,idx)=>idx!==i));
-  const updateLeg = (i,f,v) => setLegs(legs.map((l,idx)=>idx===i?{...l,[f]:f==="match"?v:+v}:l));
+// Value Bet IA : sélection sport → matchs du jour → cote bookie → analyse IA → cote juste
+function ValueBetCalc() {
+  const SPORTS_VB = [
+    { id:"football",   label:"Football",   icon:"⚽" },
+    { id:"tennis",     label:"Tennis",     icon:"🎾" },
+    { id:"basketball", label:"Basketball", icon:"🏀" },
+    { id:"rugby",      label:"Rugby",      icon:"🏉" },
+    { id:"mma",        label:"MMA/Boxe",   icon:"🥊" },
+  ];
+
+  const [sport, setSport] = useState("");
+  const [matches, setMatches] = useState([]);
+  const [loadingMatches, setLoadingMatches] = useState(false);
+  const [selectedMatch, setSelectedMatch] = useState("");
+  const [coteBookie, setCoteBookie] = useState("");
+  const [typePari, setTypePari] = useState("");
+  const [analysis, setAnalysis] = useState(null);
+  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
+  const [step, setStep] = useState(1); // 1=sport, 2=match+cote, 3=résultat
+
+  const today = new Date().toLocaleDateString("fr-FR", { weekday:"long", day:"numeric", month:"long" });
+
+  const fetchMatches = async (sportId) => {
+    setSport(sportId);
+    setMatches([]);
+    setSelectedMatch("");
+    setAnalysis(null);
+    setStep(2);
+    setLoadingMatches(true);
+    try {
+      const prompt = `Liste les 6 principaux matchs de ${sportId} prévus aujourd'hui (${today}) dans le monde. Réponds UNIQUEMENT en JSON valide, sans texte avant ou après, format exact : {"matches":["Équipe A vs Équipe B","Équipe C vs Équipe D",...]}. Si peu de matchs aujourd'hui, inclus ceux des prochaines 24h.`;
+      const res = await fetch("/api/chat", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ model:"gemini-1.5-flash", max_tokens:300, messages:[{role:"user",content:prompt}] }),
+      });
+      const data = await res.json();
+      const txt = data.content?.find(b=>b.type==="text")?.text || "";
+      const jsonMatch = txt.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        setMatches(parsed.matches || []);
+      }
+    } catch(e) {
+      setMatches(["Erreur de chargement — entre le match manuellement ci-dessous"]);
+    } finally { setLoadingMatches(false); }
+  };
+
+  const analyzeValueBet = async () => {
+    if (!selectedMatch || !coteBookie) return;
+    setLoadingAnalysis(true);
+    setStep(3);
+    setAnalysis(null);
+    try {
+      const prompt = `Tu es un expert en paris sportifs. Analyse ce match en temps réel pour détecter un value bet.
+
+Match : ${selectedMatch}
+Sport : ${sport}
+Cote proposée par le bookie : ${coteBookie} ${typePari ? `pour "${typePari}"` : ""}
+Date : ${today}
+
+Utilise tes outils de recherche pour trouver les données récentes (forme, blessés, H2H).
+
+Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
+{
+  "coteJuste": 1.85,
+  "probabilite": 54,
+  "isValue": true,
+  "valueEdge": 8.5,
+  "verdict": "✅ VALUE BET détecté",
+  "confiance": "MOYEN",
+  "raisonnement": "Explication en 2-3 phrases basée sur les données réelles",
+  "risques": "Principaux risques en 1 phrase"
+}`;
+      const res = await fetch("/api/chat", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ model:"gemini-1.5-flash", max_tokens:600, messages:[{role:"user",content:prompt}] }),
+      });
+      const data = await res.json();
+      const txt = data.content?.find(b=>b.type==="text")?.text || "";
+      const jsonMatch = txt.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        setAnalysis(JSON.parse(jsonMatch[0]));
+      } else {
+        setAnalysis({ error: txt || "Réponse invalide de l'IA" });
+      }
+    } catch(e) {
+      setAnalysis({ error: "Erreur de connexion" });
+    } finally { setLoadingAnalysis(false); }
+  };
+
+  const reset = () => { setSport(""); setMatches([]); setSelectedMatch(""); setCoteBookie(""); setTypePari(""); setAnalysis(null); setStep(1); };
+
   return (
-    <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-      {legs.map((leg,i) => (
-        <div key={i} style={{ display:"flex", gap:8, alignItems:"center" }}>
-          <input style={{ ...s.numInput, flex:1 }} placeholder="Match" value={leg.match} onChange={e=>updateLeg(i,"match",e.target.value)} />
-          <input style={{ ...s.numInput, width:70 }} type="number" step="0.05" value={leg.cote} onChange={e=>updateLeg(i,"cote",e.target.value)} inputMode="decimal" />
-          <button style={s.removeBtn} onClick={()=>removeLeg(i)}>✗</button>
+    <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+
+      {/* STEP 1 — Choix du sport */}
+      <div>
+        <div style={{ ...s.calcLabel, marginBottom:10 }}>1️⃣ Choisis un sport</div>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+          {SPORTS_VB.map(sp=>(
+            <button key={sp.id}
+              style={{ padding:"10px 14px", borderRadius:10, border:`1px solid ${sport===sp.id?"rgba(212,175,55,0.5)":"rgba(255,255,255,0.08)"}`,
+                background:sport===sp.id?"rgba(212,175,55,0.15)":"transparent",
+                color:sport===sp.id?"#D4AF37":"rgba(255,255,255,0.4)",
+                fontSize:13, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", minHeight:44,
+                fontWeight:sport===sp.id?700:400 }}
+              onClick={()=>fetchMatches(sp.id)}>
+              {sp.icon} {sp.label}
+            </button>
+          ))}
         </div>
-      ))}
-      <button style={s.addLegBtn} onClick={addLeg}>+ Ajouter une sélection</button>
-      <div style={s.calcField}>
-        <label style={s.calcLabel}>Mise : {mise}€</label>
-        <input type="range" min={5} max={Math.max(bankroll,50)} value={mise} onChange={e=>setMise(+e.target.value)} style={s.slider} />
       </div>
-      <div style={s.calcResult}>
-        <div style={s.calcRow}><span>Cote combinée</span><span style={{ color:"#D4AF37", fontWeight:700 }}>@{totalCote.toFixed(2)}</span></div>
-        <div style={{ ...s.calcRow, background:"rgba(212,175,55,0.1)", padding:"12px 14px", borderRadius:10 }}>
-          <span style={{ fontWeight:600 }}>Gain potentiel</span>
-          <span style={{ color:"#22c55e", fontWeight:700, fontSize:18 }}>+{gainNet}€</span>
+
+      {/* STEP 2 — Match + cote */}
+      {step >= 2 && (
+        <div style={{ display:"flex", flexDirection:"column", gap:14, borderTop:"1px solid rgba(212,175,55,0.1)", paddingTop:16 }}>
+          <div style={{ ...s.calcLabel }}>2️⃣ Sélectionne le match</div>
+
+          {loadingMatches ? (
+            <div style={{ display:"flex", alignItems:"center", gap:10, color:"rgba(255,255,255,0.4)", fontSize:13 }}>
+              <div style={{ display:"flex", gap:4 }}>
+                {[0,0.2,0.4].map((d,i)=><span key={i} style={{ width:6,height:6,borderRadius:"50%",background:"#D4AF37",display:"inline-block",animation:"pulse 1.2s infinite",animationDelay:`${d}s` }}/>)}
+              </div>
+              Recherche des matchs du jour...
+            </div>
+          ) : (
+            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+              {matches.map((m,i)=>(
+                <button key={i}
+                  style={{ padding:"11px 14px", borderRadius:10, border:`1px solid ${selectedMatch===m?"rgba(212,175,55,0.5)":"rgba(255,255,255,0.08)"}`,
+                    background:selectedMatch===m?"rgba(212,175,55,0.1)":"rgba(255,255,255,0.02)",
+                    color:selectedMatch===m?"#D4AF37":"rgba(255,255,255,0.7)",
+                    fontSize:13, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", textAlign:"left", minHeight:44,
+                    fontWeight:selectedMatch===m?600:400 }}
+                  onClick={()=>setSelectedMatch(m)}>{m}
+                </button>
+              ))}
+              {/* Saisie manuelle */}
+              <input style={{ ...s.numInput, marginTop:4 }} placeholder="Ou entre un match manuellement..."
+                value={matches.includes(selectedMatch) ? "" : selectedMatch}
+                onChange={e=>setSelectedMatch(e.target.value)} />
+            </div>
+          )}
+
+          {selectedMatch && !loadingMatches && (
+            <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+              <div style={s.calcField}>
+                <label style={s.calcLabel}>Type de pari <span style={{ color:"rgba(255,255,255,0.3)", fontSize:11 }}>(optionnel)</span></label>
+                <input style={s.numInput} placeholder="Ex: 1, BTTS, Over 2.5, Victoire X..." value={typePari} onChange={e=>setTypePari(e.target.value)} />
+              </div>
+              <div style={s.calcField}>
+                <label style={s.calcLabel}>3️⃣ Cote proposée par ton bookie</label>
+                <input type="number" step="0.05" inputMode="decimal" value={coteBookie}
+                  onChange={e=>setCoteBookie(e.target.value)} style={s.numInput} placeholder="Ex: 2.10" />
+              </div>
+              <button
+                style={{ background:"linear-gradient(135deg,#D4AF37,#8B7320)", border:"none", borderRadius:12,
+                  padding:"14px", color:"#080810", fontWeight:700, fontSize:15, cursor:"pointer",
+                  fontFamily:"'DM Sans',sans-serif", minHeight:50, opacity:coteBookie?1:0.4 }}
+                onClick={analyzeValueBet} disabled={!coteBookie}>
+                🔍 Analyser avec l'IA
+              </button>
+            </div>
+          )}
         </div>
-      </div>
+      )}
+
+      {/* STEP 3 — Résultat */}
+      {step >= 3 && (
+        <div style={{ borderTop:"1px solid rgba(212,175,55,0.1)", paddingTop:16 }}>
+          {loadingAnalysis ? (
+            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:12, padding:"20px 0", color:"rgba(255,255,255,0.5)", fontSize:13 }}>
+              <div style={{ display:"flex", gap:6 }}>
+                {[0,0.2,0.4].map((d,i)=><span key={i} style={{ width:8,height:8,borderRadius:"50%",background:"#D4AF37",display:"inline-block",animation:"pulse 1.2s infinite",animationDelay:`${d}s` }}/>)}
+              </div>
+              Analyse en cours — recherche des données récentes...
+            </div>
+          ) : analysis && !analysis.error ? (
+            <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+              {/* Verdict principal */}
+              <div style={{ background:analysis.isValue?"rgba(34,197,94,0.08)":"rgba(239,68,68,0.08)",
+                border:`1px solid ${analysis.isValue?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"}`,
+                borderRadius:12, padding:"14px 16px" }}>
+                <div style={{ fontSize:16, fontWeight:700, color:analysis.isValue?"#22c55e":"#ef4444", marginBottom:6 }}>
+                  {analysis.verdict}
+                </div>
+                <div style={{ display:"flex", gap:16, flexWrap:"wrap" }}>
+                  <span style={{ fontSize:13, color:"rgba(255,255,255,0.6)" }}>
+                    Cote juste : <strong style={{ color:"#a78bfa" }}>@{analysis.coteJuste}</strong>
+                  </span>
+                  <span style={{ fontSize:13, color:"rgba(255,255,255,0.6)" }}>
+                    Cote bookie : <strong style={{ color:"rgba(255,255,255,0.9)" }}>@{coteBookie}</strong>
+                  </span>
+                  <span style={{ fontSize:13, color:"rgba(255,255,255,0.6)" }}>
+                    Edge : <strong style={{ color:analysis.isValue?"#22c55e":"#ef4444" }}>
+                      {analysis.valueEdge > 0 ? "+" : ""}{analysis.valueEdge}%
+                    </strong>
+                  </span>
+                  <span style={{ fontSize:13, color:"rgba(255,255,255,0.6)" }}>
+                    Confiance : <strong style={{ color:"#D4AF37" }}>{analysis.confiance}</strong>
+                  </span>
+                </div>
+              </div>
+              {/* Raisonnement */}
+              <div style={{ fontSize:13, color:"rgba(255,255,255,0.65)", lineHeight:1.7, background:"rgba(255,255,255,0.02)", borderRadius:10, padding:"12px 14px" }}>
+                {analysis.raisonnement}
+              </div>
+              {analysis.risques && (
+                <div style={{ fontSize:12, color:"rgba(239,68,68,0.7)", background:"rgba(239,68,68,0.05)", borderRadius:8, padding:"10px 12px" }}>
+                  ⚠️ {analysis.risques}
+                </div>
+              )}
+              <button onClick={reset} style={{ background:"transparent", border:"1px solid rgba(255,255,255,0.1)", borderRadius:10, padding:"10px", color:"rgba(255,255,255,0.4)", fontSize:13, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", minHeight:44 }}>
+                ↩ Nouvelle analyse
+              </button>
+            </div>
+          ) : analysis?.error ? (
+            <div style={{ color:"#ef4444", fontSize:13 }}>⚠️ {analysis.error}</div>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
@@ -374,13 +602,7 @@ export default function BettingAdvisor() {
   const [editingBR, setEditingBR] = useState(false);
   const [showAddBet, setShowAddBet] = useState(false);
   const [newBet, setNewBet] = useState({ match:"", sport:"football", type:"", cote:"", mise:"" });
-  const [bets, setBets] = useState([
-    { id:1, match:"PSG vs Lyon", sport:"football", type:"1 (PSG)", cote:1.65, mise:20, statut:"gagné", date:"08/03/2025", gain:13 },
-    { id:2, match:"Djokovic vs Alcaraz", sport:"tennis", type:"Djokovic", cote:2.10, mise:15, statut:"perdu", date:"05/03/2025", gain:-15 },
-    { id:3, match:"Lakers vs Celtics", sport:"basketball", type:"Over 215.5", cote:1.90, mise:25, statut:"gagné", date:"02/03/2025", gain:22.5 },
-    { id:4, match:"Arsenal vs Chelsea", sport:"football", type:"BTTS", cote:1.75, mise:20, statut:"gagné", date:"28/02/2025", gain:15 },
-    { id:5, match:"Nadal vs Medvedev", sport:"tennis", type:"Nadal", cote:1.45, mise:30, statut:"perdu", date:"20/02/2025", gain:-30 },
-  ]);
+  const [bets, setBets] = useState([]);
 
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
@@ -424,7 +646,7 @@ export default function BettingAdvisor() {
       const res = await fetch("/api/chat", {
         method:"POST",
         headers:{ "Content-Type":"application/json" },
-        body:JSON.stringify({ model:"gemini-2.0-flash", max_tokens:3000,
+        body:JSON.stringify({ model:"gemini-1.5-flash", max_tokens:3000,
           system: SYSTEM_PROMPT + `\n\nProfil utilisateur : pseudo "${profile.pseudo}", niveau "${profile.niveau}", bankroll actuelle ${bankroll}€.`,
           messages: updatedHist }),
       });
