@@ -66,23 +66,10 @@ function useIsMobile() {
   return isMobile;
 }
 
-// ─── HOOK : hauteur viewport réelle (gère le clavier mobile) ────────────────
+// ─── HOOK : scroll vers le bas quand le clavier iOS s'ouvre ─────────────────
 function useViewportHeight() {
-  const [vh, setVh] = useState(window.innerHeight);
-  useEffect(() => {
-    const update = () => {
-      setVh(window.visualViewport ? window.visualViewport.height : window.innerHeight);
-    };
-    const vv = window.visualViewport;
-    if (vv) vv.addEventListener("resize", update);
-    window.addEventListener("resize", update);
-    update();
-    return () => {
-      if (vv) vv.removeEventListener("resize", update);
-      window.removeEventListener("resize", update);
-    };
-  }, []);
-  return vh;
+  // On n'utilise plus JS pour la hauteur — CSS 100dvh gère ça nativement
+  return null;
 }
 
 // ─── SPORTS AVATAR SVG ───────────────────────────────────────────────────────
@@ -369,7 +356,6 @@ export default function BettingAdvisor() {
   const getSavedProfile = () => { try { const p=localStorage.getItem("squadbet_profile"); return p?JSON.parse(p):null; } catch(e){return null;} };
   const [profile, setProfile] = useState(getSavedProfile);
   const isMobile = useIsMobile();
-  const vh = useViewportHeight();
 
   const [view, setView] = useState("chat");
   const [sport, setSport] = useState("all");
@@ -442,8 +428,9 @@ export default function BettingAdvisor() {
       const aiMsg = { role:"assistant", content:txt };
       setHistory([...updatedHist, aiMsg]);
       setMessages(prev=>[...prev, aiMsg]);
-    } catch {
-      setMessages(prev=>[...prev, { role:"assistant", content:"⚠️ Erreur de connexion. Réessaie dans un instant." }]);
+    } catch(err) {
+      const errMsg = err?.message || String(err);
+      setMessages(prev=>[...prev, { role:"assistant", content:`⚠️ Erreur : ${errMsg}` }]);
     } finally { setLoading(false); }
   };
 
@@ -478,10 +465,9 @@ export default function BettingAdvisor() {
 
   // ── LAYOUT VARS ────────────────────────────────────────────────────────────
   const SIDEBAR_W = isMobile ? 0 : 230;
-  const appHeight = isMobile ? vh : "100vh";
 
   return (
-    <div style={{ height: appHeight, width:"100vw", background:"#080810", display:"flex", flexDirection:"column", fontFamily:"'DM Sans',sans-serif", position:"relative", overflow:"hidden" }}>
+    <div style={{ height:"100dvh", width:"100vw", background:"#080810", display:"flex", flexDirection:"column", fontFamily:"'DM Sans',sans-serif", position:"relative", overflow:"hidden" }}>
       <div style={s.bgGrid} />
 
       {/* ── DESKTOP SIDEBAR ── */}
@@ -552,7 +538,7 @@ export default function BettingAdvisor() {
 
         {/* ══ CHAT ══ */}
         {view==="chat" && (
-          <div style={{ display:"flex", flexDirection:"column", height:"100%", overflow:"hidden" }}>
+          <div style={{ display:"flex", flexDirection:"column", height:"100%", overflow:"hidden", position:"relative" }}>
             {/* Sport filter bar */}
             <div style={{ ...s.topBar, overflowX:"auto", flexWrap:"nowrap", WebkitOverflowScrolling:"touch", scrollbarWidth:"none" }}>
               {SPORTS.map(sp=>(
@@ -598,12 +584,13 @@ export default function BettingAdvisor() {
               </div>
             )}
 
-            {/* Input */}
-            <div style={{ ...s.inputArea, padding: isMobile?"10px 12px":"12px 18px", paddingBottom: isMobile ? `calc(10px + env(safe-area-inset-bottom, 0px))` : "12px" }}>
-              <textarea ref={inputRef} style={{ ...s.textarea, fontSize:isMobile?16:13.5, minHeight:44, maxHeight:120, height:44, padding: isMobile?"12px 14px":"10px 14px" }}
+            {/* Input — position sticky évite la remontée sur Safari iOS */}
+            <div style={{ ...s.inputArea, padding: isMobile?"10px 12px":"12px 18px", paddingBottom: isMobile ? `calc(10px + env(safe-area-inset-bottom, 0px))` : "12px", position:"sticky", bottom:0, zIndex:20 }}>
+              <textarea ref={inputRef} style={{ ...s.textarea, fontSize:16, minHeight:44, maxHeight:isMobile?100:120, height:44, padding: isMobile?"12px 14px":"10px 14px" }}
                 value={input}
                 onChange={handleTextareaChange}
                 onKeyDown={e=>{ if(e.key==="Enter"&&!e.shiftKey&&!isMobile){ e.preventDefault(); sendMessage(); }}}
+                onFocus={()=>{ setTimeout(()=>bottomRef.current?.scrollIntoView({ behavior:"smooth", block:"end" }), 400); }}
                 placeholder="Analyse un match, stratégie bankroll..."
                 rows={1} />
               <button style={{ ...s.sendBtn, width:isMobile?48:38, height:isMobile?48:38, borderRadius:isMobile?14:9, fontSize:isMobile?18:14, opacity:input.trim()&&!loading?1:0.35 }}
@@ -771,7 +758,8 @@ export default function BettingAdvisor() {
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
         html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
-        body{background:#080810;overscroll-behavior:none;-webkit-font-smoothing:antialiased}
+        body{background:#080810;overscroll-behavior:none;-webkit-font-smoothing:antialiased;position:fixed;width:100%;height:100%}
+        html{height:100%;height:-webkit-fill-available}
         ::-webkit-scrollbar{width:3px;height:3px}
         ::-webkit-scrollbar-thumb{background:rgba(212,175,55,0.2);border-radius:4px}
         div::-webkit-scrollbar{display:none}
