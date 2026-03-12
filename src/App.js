@@ -240,82 +240,85 @@ function OnboardingScreen({ onComplete }) {
   return (
     <div style={ob.root}>
       <div style={ob.bgGrid} />
-      <div style={{ ...ob.card, maxWidth: isMobile ? "100%" : 440, borderRadius: isMobile ? "20px 20px 0 0" : 18, marginTop: isMobile ? "auto" : 0 }}>
-        <div style={ob.logoRow}>
-          <SportsAvatar size={isMobile ? 44 : 52} />
-          <div>
-            <div style={{ ...ob.logoName, fontSize: isMobile ? 20 : 22 }}>SquadBet</div>
-            <div style={ob.logoSub}>Expert Paris Sportifs</div>
-          </div>
-        </div>
-
-        <div style={ob.dots}>
-          {[1,2,3].map(i => <div key={i} style={{ ...ob.dot, ...(step>=i?ob.dotOn:{}) }} />)}
-        </div>
-
-        <div style={{ opacity:animating?0:1, transition:"opacity 0.28s", minHeight:isMobile?240:280 }}>
-          {step===1 && (
-            <div style={ob.stepWrap}>
-              <div style={ob.stepTitle}>Bienvenue 👋</div>
-              <div style={ob.stepSub}>Choisis ton pseudo. Il apparaîtra dans ton espace personnel.</div>
-              <div style={ob.inputWrap}>
-                <div style={ob.inputLabel}>Ton pseudo</div>
-                <input style={ob.input} placeholder="Ex: LeBossDesParis" value={pseudo}
-                  onChange={e=>setPseudo(e.target.value)}
-                  onKeyDown={e=>e.key==="Enter"&&canNext1&&nextStep()}
-                  autoComplete="off" maxLength={20} autoFocus />
-                <div style={ob.inputHint}>{pseudo.length}/20 caractères</div>
-              </div>
-              <button style={{ ...ob.btn, opacity:canNext1?1:0.35 }} onClick={nextStep} disabled={!canNext1}>Continuer →</button>
+      {/* Scrollable wrapper — évite que le clavier iPhone cache le bouton */}
+      <div style={ob.scroll}>
+        <div style={{ ...ob.card, maxWidth: isMobile ? "100%" : 440, borderRadius: isMobile ? 20 : 18 }}>
+          <div style={ob.logoRow}>
+            <SportsAvatar size={isMobile ? 44 : 52} />
+            <div>
+              <div style={{ ...ob.logoName, fontSize: isMobile ? 20 : 22 }}>SquadBet</div>
+              <div style={ob.logoSub}>Expert Paris Sportifs</div>
             </div>
-          )}
-          {step===2 && (
-            <div style={ob.stepWrap}>
-              <div style={ob.stepTitle}>Ta Bankroll 💰</div>
-              <div style={ob.stepSub}>Le budget que tu alloues aux paris. Ne mets jamais plus que ce que tu peux perdre.</div>
-              <div style={ob.inputWrap}>
-                <div style={ob.inputLabel}>Montant (€)</div>
-                <div style={ob.eurWrap}>
-                  <span style={ob.eurSign}>€</span>
-                  <input style={{ ...ob.input, paddingLeft:36 }} placeholder="Ex: 200" value={bankroll}
-                    onChange={e=>setBankroll(e.target.value.replace(/[^0-9.]/g,""))}
-                    onKeyDown={e=>e.key==="Enter"&&canNext2&&nextStep()}
-                    type="number" inputMode="numeric" min="10" autoFocus />
+          </div>
+
+          <div style={ob.dots}>
+            {[1,2,3].map(i => <div key={i} style={{ ...ob.dot, ...(step>=i?ob.dotOn:{}) }} />)}
+          </div>
+
+          <div style={{ opacity:animating?0:1, transition:"opacity 0.28s" }}>
+            {step===1 && (
+              <div style={ob.stepWrap}>
+                <div style={ob.stepTitle}>Bienvenue 👋</div>
+                <div style={ob.stepSub}>Choisis ton pseudo. Il apparaîtra dans ton espace personnel.</div>
+                <div style={ob.inputWrap}>
+                  <div style={ob.inputLabel}>Ton pseudo</div>
+                  <input style={ob.input} placeholder="Ex: LeBossDesParis" value={pseudo}
+                    onChange={e=>setPseudo(e.target.value)}
+                    onKeyDown={e=>e.key==="Enter"&&canNext1&&nextStep()}
+                    autoComplete="off" maxLength={20} />
+                  <div style={ob.inputHint}>{pseudo.length}/20 caractères</div>
                 </div>
-                <div style={ob.bankrollSuggest}>
-                  {[50,100,200,500].map(v=>(
-                    <button key={v} style={{ ...ob.chip, ...(bankroll===String(v)?ob.chipOn:{}) }} onClick={()=>setBankroll(String(v))}>{v}€</button>
+                <button style={{ ...ob.btn, opacity:canNext1?1:0.35, marginTop:8 }} onClick={nextStep} disabled={!canNext1}>Continuer →</button>
+              </div>
+            )}
+            {step===2 && (
+              <div style={ob.stepWrap}>
+                <div style={ob.stepTitle}>Ta Bankroll 💰</div>
+                <div style={ob.stepSub}>Le budget que tu alloues aux paris. Ne mets jamais plus que ce que tu peux perdre.</div>
+                <div style={ob.inputWrap}>
+                  <div style={ob.inputLabel}>Montant (€)</div>
+                  <div style={ob.eurWrap}>
+                    <span style={ob.eurSign}>€</span>
+                    <input style={{ ...ob.input, paddingLeft:36 }} placeholder="Ex: 200" value={bankroll}
+                      onChange={e=>setBankroll(e.target.value.replace(/[^0-9.]/g,""))}
+                      onKeyDown={e=>e.key==="Enter"&&canNext2&&nextStep()}
+                      type="number" inputMode="numeric" min="10" />
+                  </div>
+                  <div style={ob.bankrollSuggest}>
+                    {[50,100,200,500].map(v=>(
+                      <button key={v} style={{ ...ob.chip, ...(bankroll===String(v)?ob.chipOn:{}) }} onClick={()=>setBankroll(String(v))}>{v}€</button>
+                    ))}
+                  </div>
+                  <div style={ob.inputHint}>💡 Commence avec un montant confortable.</div>
+                </div>
+                <div style={{ display:"flex", gap:10, marginTop:8 }}>
+                  <button style={ob.btnBack} onClick={()=>setStep(1)}>← Retour</button>
+                  <button style={{ ...ob.btn, flex:1, opacity:canNext2?1:0.35 }} onClick={nextStep} disabled={!canNext2}>Continuer →</button>
+                </div>
+              </div>
+            )}
+            {step===3 && (
+              <div style={ob.stepWrap}>
+                <div style={ob.stepTitle}>Ton Niveau 🎯</div>
+                <div style={ob.stepSub}>SquadBet adapte ses conseils à ton profil.</div>
+                <div style={ob.levelGrid}>
+                  {LEVELS.map(lv=>(
+                    <button key={lv.id} style={{ ...ob.levelBtn, ...(niveau===lv.id?ob.levelBtnOn:{}) }} onClick={()=>setNiveau(lv.id)}>
+                      <span style={{ fontSize:24 }}>{lv.icon}</span>
+                      <span style={ob.levelLabel}>{lv.label}</span>
+                      <span style={ob.levelDesc}>{lv.desc}</span>
+                    </button>
                   ))}
                 </div>
-                <div style={ob.inputHint}>💡 Commence avec un montant confortable.</div>
+                <div style={{ display:"flex", gap:10, marginTop:8 }}>
+                  <button style={ob.btnBack} onClick={()=>setStep(2)}>← Retour</button>
+                  <button style={{ ...ob.btn, flex:1, opacity:canFinish?1:0.35 }} onClick={handleFinish} disabled={!canFinish}>Lancer SquadBet 🚀</button>
+                </div>
               </div>
-              <div style={{ display:"flex", gap:10 }}>
-                <button style={ob.btnBack} onClick={()=>setStep(1)}>← Retour</button>
-                <button style={{ ...ob.btn, flex:1, opacity:canNext2?1:0.35 }} onClick={nextStep} disabled={!canNext2}>Continuer →</button>
-              </div>
-            </div>
-          )}
-          {step===3 && (
-            <div style={ob.stepWrap}>
-              <div style={ob.stepTitle}>Ton Niveau 🎯</div>
-              <div style={ob.stepSub}>SquadBet adapte ses conseils à ton profil.</div>
-              <div style={ob.levelGrid}>
-                {LEVELS.map(lv=>(
-                  <button key={lv.id} style={{ ...ob.levelBtn, ...(niveau===lv.id?ob.levelBtnOn:{}) }} onClick={()=>setNiveau(lv.id)}>
-                    <span style={{ fontSize:24 }}>{lv.icon}</span>
-                    <span style={ob.levelLabel}>{lv.label}</span>
-                    <span style={ob.levelDesc}>{lv.desc}</span>
-                  </button>
-                ))}
-              </div>
-              <div style={{ display:"flex", gap:10, marginTop:8 }}>
-                <button style={ob.btnBack} onClick={()=>setStep(2)}>← Retour</button>
-                <button style={{ ...ob.btn, flex:1, opacity:canFinish?1:0.35 }} onClick={handleFinish} disabled={!canFinish}>Lancer SquadBet 🚀</button>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
+          <div style={ob.disclaimer}>⚠️ Paris sportifs réservés aux +18 ans. Jouez de façon responsable.</div>
         </div>
-        <div style={ob.disclaimer}>⚠️ Paris sportifs réservés aux +18 ans. Jouez de façon responsable.</div>
       </div>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500&display=swap');
@@ -329,9 +332,10 @@ function OnboardingScreen({ onComplete }) {
 }
 
 const ob = {
-  root:{ minHeight:"100vh", background:"#080810", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-end", fontFamily:"'DM Sans',sans-serif", position:"relative", overflow:"hidden" },
+  root:{ height:"100dvh", background:"#080810", display:"flex", flexDirection:"column", fontFamily:"'DM Sans',sans-serif", position:"relative" },
   bgGrid:{ position:"fixed", inset:0, backgroundImage:"linear-gradient(rgba(212,175,55,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(212,175,55,0.025) 1px,transparent 1px)", backgroundSize:"48px 48px", pointerEvents:"none" },
-  card:{ width:"100%", background:"rgba(12,12,20,0.99)", border:"1px solid rgba(212,175,55,0.2)", padding:"28px 22px 36px", boxShadow:"0 -20px 60px rgba(0,0,0,0.5)", position:"relative", zIndex:1 },
+  scroll:{ flex:1, overflowY:"auto", WebkitOverflowScrolling:"touch", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"20px 16px", position:"relative", zIndex:1 },
+  card:{ width:"100%", maxWidth:480, background:"rgba(12,12,20,0.99)", border:"1px solid rgba(212,175,55,0.2)", padding:"28px 22px 36px", boxShadow:"0 0 60px rgba(0,0,0,0.5)", borderRadius:20 },
   logoRow:{ display:"flex", alignItems:"center", gap:12, marginBottom:24, paddingBottom:18, borderBottom:"1px solid rgba(212,175,55,0.1)" },
   logoName:{ fontFamily:"'Playfair Display',serif", fontSize:22, color:"#D4AF37" },
   logoSub:{ fontSize:11, color:"rgba(255,255,255,0.3)", marginTop:2 },
@@ -428,7 +432,7 @@ export default function BettingAdvisor() {
     try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method:"POST",
-        headers: { "Content-Type": "application/json", "x-api-key": process.env.REACT_APP_ANTHROPIC_KEY },
+        headers:{ "Content-Type":"application/json" },
         body:JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1200,
           system: SYSTEM_PROMPT + `\n\nProfil utilisateur : pseudo "${profile.pseudo}", niveau "${profile.niveau}", bankroll actuelle ${bankroll}€.`,
           messages: updatedHist }),
