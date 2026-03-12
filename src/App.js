@@ -428,7 +428,7 @@ export default function BettingAdvisor() {
     try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method:"POST",
-        headers:{ "Content-Type":"application/json" },
+        headers: { "Content-Type": "application/json", "x-api-key": process.env.REACT_APP_ANTHROPIC_KEY },
         body:JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1200,
           system: SYSTEM_PROMPT + `\n\nProfil utilisateur : pseudo "${profile.pseudo}", niveau "${profile.niveau}", bankroll actuelle ${bankroll}€.`,
           messages: updatedHist }),
