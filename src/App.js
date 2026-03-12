@@ -1,0 +1,865 @@
+import { useState, useRef, useEffect, useCallback } from "react";
+
+// ─── SYSTEM PROMPT ────────────────────────────────────────────────────────────
+const SYSTEM_PROMPT = `Tu es **SquadBet**, un analyste sportif professionnel avec 22 ans d'expérience dans les paris sportifs. Tu as travaillé pour des bookmakers européens majeurs (Betclic, Unibet, William Hill), analysé plus de 15 000 matchs et développé une méthodologie quantitative propriétaire.
+
+**Ton style :**
+- Direct, rigoureux, professionnel mais humain
+- Tu utilises TOUJOURS des données chiffrées concrètes (%, cotes, statistiques)
+- Tu évalues systématiquement le VALUE BET (valeur réelle vs cote proposée)
+- Tu mentionnes le niveau de confiance : 🔥 ÉLEVÉ / ⚡ MOYEN / 🧊 FAIBLE
+- Tu conseilles une mise en % de bankroll selon la méthode Kelly
+- Tu RAPPELLES toujours de parier de façon responsable en fin de réponse
+
+**Ta méthode d'analyse structurée :**
+1. 📊 **FORME RÉCENTE** — 5 derniers matchs des deux équipes
+2. 🔄 **HEAD-TO-HEAD** — Historique des confrontations directes
+3. 🏥 **CONTEXTE** — Blessures, suspensions, fatigue, motivation
+4. 📈 **ANALYSE DES COTES** — Cote juste estimée vs cote bookmaker
+5. ⚠️ **FACTEURS DE RISQUE** — Ce qui peut faire rater le pari
+6. 🎯 **RECOMMANDATION FINALE** — Type de pari, cote cible, mise conseillée (% bankroll)
+
+**Sports couverts :** Football ⚽, Tennis 🎾, Basketball 🏀, Rugby 🏉, Hockey 🏒, MMA/Boxe 🥊
+
+Tu parles français, tu es passionné mais rigoureux. Tu ne garantis JAMAIS un résultat.`;
+
+const SPORTS = [
+  { id: "all",        label: "Tous",       icon: "🏆" },
+  { id: "football",   label: "Foot",       icon: "⚽" },
+  { id: "tennis",     label: "Tennis",     icon: "🎾" },
+  { id: "basketball", label: "Basket",     icon: "🏀" },
+  { id: "rugby",      label: "Rugby",      icon: "🏉" },
+  { id: "mma",        label: "MMA",        icon: "🥊" },
+];
+
+const QUICK_PROMPTS = {
+  all:        ["Analyse PSG vs Man City en C1", "Stratégie bankroll 200€", "Comment détecter un value bet ?", "Méthode Kelly expliquée"],
+  football:   ["Analyse Real Madrid vs Barça", "Meilleurs championnats à parier", "Stratégie Over/Under L1", "Paris sur les corners ?"],
+  tennis:     ["Analyse Djokovic vs Alcaraz", "Paris sur les sets", "Meilleurs tournois", "Double chance tennis"],
+  basketball: ["Lakers vs Celtics NBA", "Over/Under NBA comment faire ?", "Handicap asiatique basket", "Top ligues basket"],
+  rugby:      ["France vs All Blacks", "Paris essais Top 14", "Handicap rugby", "6 Nations opportunités"],
+  mma:        ["UFC prochain événement", "Comment parier sur le MMA ?", "Finish vs décision", "Lire les cotes MMA"],
+};
+
+const LEVELS = [
+  { id: "debutant",      label: "Débutant",      desc: "Je commence tout juste", icon: "🌱" },
+  { id: "intermediaire", label: "Intermédiaire", desc: "Quelques mois d'exp.",   icon: "⚡" },
+  { id: "confirme",      label: "Confirmé",      desc: "Je maîtrise les bases",  icon: "🔥" },
+  { id: "expert",        label: "Expert",         desc: "Parieur professionnel",  icon: "💎" },
+];
+
+const NAV_ITEMS = [
+  { id: "chat",     icon: "💬", label: "Analyste" },
+  { id: "bankroll", icon: "📊", label: "Calculs"  },
+  { id: "history",  icon: "📋", label: "Paris"    },
+  { id: "stats",    icon: "📈", label: "Stats"    },
+];
+
+// ─── HOOK : détecte si on est sur mobile ────────────────────────────────────
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return isMobile;
+}
+
+// ─── HOOK : hauteur viewport réelle (gère le clavier mobile) ────────────────
+function useViewportHeight() {
+  const [vh, setVh] = useState(window.innerHeight);
+  useEffect(() => {
+    const update = () => {
+      setVh(window.visualViewport ? window.visualViewport.height : window.innerHeight);
+    };
+    const vv = window.visualViewport;
+    if (vv) vv.addEventListener("resize", update);
+    window.addEventListener("resize", update);
+    update();
+    return () => {
+      if (vv) vv.removeEventListener("resize", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+  return vh;
+}
+
+// ─── SPORTS AVATAR SVG ───────────────────────────────────────────────────────
+function SportsAvatar({ size = 40 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+      <defs>
+        <radialGradient id="avatarBg" cx="50%" cy="35%" r="65%">
+          <stop offset="0%" stopColor="#F0CC55" />
+          <stop offset="100%" stopColor="#7A5F10" />
+        </radialGradient>
+        <clipPath id="avatarClip"><circle cx="20" cy="20" r="20" /></clipPath>
+      </defs>
+      <circle cx="20" cy="20" r="20" fill="url(#avatarBg)" />
+      <circle cx="20" cy="20" r="18.5" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="0.8" />
+      <g clipPath="url(#avatarClip)">
+        <circle cx="10" cy="10" r="6.5" fill="#0a0a12" opacity="0.85" />
+        <polygon points="10,5.5 12.2,7 12.2,10 10,11.5 7.8,10 7.8,7" fill="white" opacity="0.9" />
+        <polygon points="10,5.5 12.2,7 13.5,5 11.5,3.5" fill="#1a1a2e" opacity="0.9" />
+        <polygon points="7.8,7 6.5,5 8.5,3.5 10,5.5" fill="#1a1a2e" opacity="0.9" />
+        <circle cx="30" cy="10" r="6.5" fill="#C8E640" opacity="0.95" />
+        <path d="M25,8.5 Q27.5,10 25,11.5" fill="none" stroke="white" strokeWidth="1.1" strokeLinecap="round" />
+        <path d="M35,8.5 Q32.5,10 35,11.5" fill="none" stroke="white" strokeWidth="1.1" strokeLinecap="round" />
+        <circle cx="10" cy="30" r="6.5" fill="#E8601A" opacity="0.95" />
+        <path d="M3.5,30 L16.5,30" fill="none" stroke="#7A2800" strokeWidth="0.9" />
+        <path d="M10,23.5 L10,36.5" fill="none" stroke="#7A2800" strokeWidth="0.9" />
+        <path d="M5,26 Q10,30 15,26" fill="none" stroke="#7A2800" strokeWidth="0.8" />
+        <ellipse cx="30" cy="30" rx="6" ry="5" fill="#8B4513" opacity="0.9" />
+        <line x1="30" y1="26.5" x2="30" y2="33.5" stroke="white" strokeWidth="0.7" />
+        <line x1="28.5" y1="28.5" x2="31.5" y2="28.5" stroke="white" strokeWidth="0.6" />
+        <line x1="28.5" y1="30" x2="31.5" y2="30" stroke="white" strokeWidth="0.6" />
+        <line x1="20" y1="2" x2="20" y2="38" stroke="rgba(212,175,55,0.6)" strokeWidth="1.2" />
+        <line x1="2" y1="20" x2="38" y2="20" stroke="rgba(212,175,55,0.6)" strokeWidth="1.2" />
+        <circle cx="20" cy="20" r="5.5" fill="#0a0a12" />
+        <circle cx="20" cy="20" r="5.5" stroke="#D4AF37" strokeWidth="1" />
+        <polygon points="21.5,15.5 18.5,20.5 20.5,20.5 18.5,24.5 21.5,19.5 19.5,19.5" fill="#D4AF37" />
+      </g>
+    </svg>
+  );
+}
+
+// ─── CALCULATORS ─────────────────────────────────────────────────────────────
+function KellyCalc({ bankroll }) {
+  const [prob, setProb] = useState(55);
+  const [cote, setCote] = useState(1.90);
+  const edge = (prob / 100) * cote - 1;
+  const kelly = edge > 0 ? (edge / (cote - 1)) * 100 : 0;
+  const mise = ((kelly / 2) / 100) * bankroll;
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+      <div style={s.calcField}>
+        <label style={s.calcLabel}>Probabilité estimée : <strong style={{ color:"#D4AF37" }}>{prob}%</strong></label>
+        <input type="range" min={10} max={90} value={prob} onChange={e=>setProb(+e.target.value)} style={s.slider} />
+      </div>
+      <div style={s.calcField}>
+        <label style={s.calcLabel}>Cote bookmaker : <strong style={{ color:"#D4AF37" }}>{cote}</strong></label>
+        <input type="range" min={1.1} max={5} step={0.05} value={cote} onChange={e=>setCote(+e.target.value)} style={s.slider} />
+      </div>
+      <div style={s.calcResult}>
+        <div style={s.calcRow}><span>Edge</span><span style={{ color:edge>0?"#22c55e":"#ef4444", fontWeight:700 }}>{edge>0?"+":""}{(edge*100).toFixed(1)}%</span></div>
+        <div style={s.calcRow}><span>Kelly complet</span><span style={{ color:"#D4AF37", fontWeight:700 }}>{kelly.toFixed(1)}%</span></div>
+        <div style={{ ...s.calcRow, background:"rgba(212,175,55,0.1)", padding:"12px 14px", borderRadius:10 }}>
+          <span style={{ fontWeight:600 }}>½ Kelly recommandé</span>
+          <span style={{ color:"#D4AF37", fontWeight:700, fontSize:18 }}>{mise.toFixed(2)}€</span>
+        </div>
+        {edge<=0 && <div style={{ color:"#ef4444", fontSize:12, textAlign:"center" }}>⚠️ Pas de value — pari déconseillé</div>}
+      </div>
+    </div>
+  );
+}
+
+function ValueBetCalc() {
+  const [coteBookie, setCoteBookie] = useState(2.10);
+  const [probPerso, setProbPerso] = useState(55);
+  const cotejuste = (100/probPerso).toFixed(2);
+  const valueEdge = ((probPerso/100)*coteBookie-1)*100;
+  const isValue = valueEdge > 0;
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+      <div style={s.calcField}>
+        <label style={s.calcLabel}>Cote proposée par le bookie</label>
+        <input type="number" step="0.05" value={coteBookie} onChange={e=>setCoteBookie(+e.target.value)} style={s.numInput} inputMode="decimal" />
+      </div>
+      <div style={s.calcField}>
+        <label style={s.calcLabel}>Ta probabilité : <strong style={{ color:"#D4AF37" }}>{probPerso}%</strong></label>
+        <input type="range" min={10} max={90} value={probPerso} onChange={e=>setProbPerso(+e.target.value)} style={s.slider} />
+      </div>
+      <div style={s.calcResult}>
+        <div style={s.calcRow}><span>Cote juste</span><span style={{ color:"#a78bfa", fontWeight:700 }}>@{cotejuste}</span></div>
+        <div style={s.calcRow}><span>Cote bookie</span><span style={{ fontWeight:700 }}>@{coteBookie}</span></div>
+        <div style={{ ...s.calcRow, background:isValue?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)", padding:"12px 14px", borderRadius:10, border:`1px solid ${isValue?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"}` }}>
+          <span style={{ fontWeight:600 }}>{isValue?"✅ VALUE BET":"❌ Pas de value"}</span>
+          <span style={{ color:isValue?"#22c55e":"#ef4444", fontWeight:700, fontSize:18 }}>{valueEdge>=0?"+":""}{valueEdge.toFixed(1)}%</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ComboCalc({ bankroll }) {
+  const [legs, setLegs] = useState([{ match:"PSG vs Lyon", cote:1.65 }, { match:"Real vs Barça", cote:2.10 }]);
+  const [mise, setMise] = useState(20);
+  const totalCote = legs.reduce((a,l)=>a*l.cote,1);
+  const gainNet = (mise*totalCote-mise).toFixed(2);
+  const addLeg = () => setLegs([...legs, { match:"", cote:1.50 }]);
+  const removeLeg = i => setLegs(legs.filter((_,idx)=>idx!==i));
+  const updateLeg = (i,f,v) => setLegs(legs.map((l,idx)=>idx===i?{...l,[f]:f==="match"?v:+v}:l));
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+      {legs.map((leg,i) => (
+        <div key={i} style={{ display:"flex", gap:8, alignItems:"center" }}>
+          <input style={{ ...s.numInput, flex:1 }} placeholder="Match" value={leg.match} onChange={e=>updateLeg(i,"match",e.target.value)} />
+          <input style={{ ...s.numInput, width:70 }} type="number" step="0.05" value={leg.cote} onChange={e=>updateLeg(i,"cote",e.target.value)} inputMode="decimal" />
+          <button style={s.removeBtn} onClick={()=>removeLeg(i)}>✗</button>
+        </div>
+      ))}
+      <button style={s.addLegBtn} onClick={addLeg}>+ Ajouter une sélection</button>
+      <div style={s.calcField}>
+        <label style={s.calcLabel}>Mise : {mise}€</label>
+        <input type="range" min={5} max={Math.max(bankroll,50)} value={mise} onChange={e=>setMise(+e.target.value)} style={s.slider} />
+      </div>
+      <div style={s.calcResult}>
+        <div style={s.calcRow}><span>Cote combinée</span><span style={{ color:"#D4AF37", fontWeight:700 }}>@{totalCote.toFixed(2)}</span></div>
+        <div style={{ ...s.calcRow, background:"rgba(212,175,55,0.1)", padding:"12px 14px", borderRadius:10 }}>
+          <span style={{ fontWeight:600 }}>Gain potentiel</span>
+          <span style={{ color:"#22c55e", fontWeight:700, fontSize:18 }}>+{gainNet}€</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ONBOARDING ──────────────────────────────────────────────────────────────
+function OnboardingScreen({ onComplete }) {
+  const [step, setStep] = useState(1);
+  const [pseudo, setPseudo] = useState("");
+  const [bankroll, setBankroll] = useState("");
+  const [niveau, setNiveau] = useState("");
+  const [animating, setAnimating] = useState(false);
+  const isMobile = useIsMobile();
+
+  const nextStep = () => {
+    setAnimating(true);
+    setTimeout(() => { setStep(s=>s+1); setAnimating(false); }, 280);
+  };
+  const handleFinish = () => {
+    const profile = { pseudo: pseudo.trim(), bankroll: parseFloat(bankroll)||100, niveau };
+    try { localStorage.setItem("squadbet_profile", JSON.stringify(profile)); } catch(e) {}
+    onComplete(profile);
+  };
+  const canNext1 = pseudo.trim().length >= 2;
+  const canNext2 = parseFloat(bankroll) > 0;
+  const canFinish = niveau !== "";
+
+  return (
+    <div style={ob.root}>
+      <div style={ob.bgGrid} />
+      <div style={{ ...ob.card, maxWidth: isMobile ? "100%" : 440, borderRadius: isMobile ? "20px 20px 0 0" : 18, marginTop: isMobile ? "auto" : 0 }}>
+        <div style={ob.logoRow}>
+          <SportsAvatar size={isMobile ? 44 : 52} />
+          <div>
+            <div style={{ ...ob.logoName, fontSize: isMobile ? 20 : 22 }}>SquadBet</div>
+            <div style={ob.logoSub}>Expert Paris Sportifs</div>
+          </div>
+        </div>
+
+        <div style={ob.dots}>
+          {[1,2,3].map(i => <div key={i} style={{ ...ob.dot, ...(step>=i?ob.dotOn:{}) }} />)}
+        </div>
+
+        <div style={{ opacity:animating?0:1, transition:"opacity 0.28s", minHeight:isMobile?240:280 }}>
+          {step===1 && (
+            <div style={ob.stepWrap}>
+              <div style={ob.stepTitle}>Bienvenue 👋</div>
+              <div style={ob.stepSub}>Choisis ton pseudo. Il apparaîtra dans ton espace personnel.</div>
+              <div style={ob.inputWrap}>
+                <div style={ob.inputLabel}>Ton pseudo</div>
+                <input style={ob.input} placeholder="Ex: LeBossDesParis" value={pseudo}
+                  onChange={e=>setPseudo(e.target.value)}
+                  onKeyDown={e=>e.key==="Enter"&&canNext1&&nextStep()}
+                  autoComplete="off" maxLength={20} autoFocus />
+                <div style={ob.inputHint}>{pseudo.length}/20 caractères</div>
+              </div>
+              <button style={{ ...ob.btn, opacity:canNext1?1:0.35 }} onClick={nextStep} disabled={!canNext1}>Continuer →</button>
+            </div>
+          )}
+          {step===2 && (
+            <div style={ob.stepWrap}>
+              <div style={ob.stepTitle}>Ta Bankroll 💰</div>
+              <div style={ob.stepSub}>Le budget que tu alloues aux paris. Ne mets jamais plus que ce que tu peux perdre.</div>
+              <div style={ob.inputWrap}>
+                <div style={ob.inputLabel}>Montant (€)</div>
+                <div style={ob.eurWrap}>
+                  <span style={ob.eurSign}>€</span>
+                  <input style={{ ...ob.input, paddingLeft:36 }} placeholder="Ex: 200" value={bankroll}
+                    onChange={e=>setBankroll(e.target.value.replace(/[^0-9.]/g,""))}
+                    onKeyDown={e=>e.key==="Enter"&&canNext2&&nextStep()}
+                    type="number" inputMode="numeric" min="10" autoFocus />
+                </div>
+                <div style={ob.bankrollSuggest}>
+                  {[50,100,200,500].map(v=>(
+                    <button key={v} style={{ ...ob.chip, ...(bankroll===String(v)?ob.chipOn:{}) }} onClick={()=>setBankroll(String(v))}>{v}€</button>
+                  ))}
+                </div>
+                <div style={ob.inputHint}>💡 Commence avec un montant confortable.</div>
+              </div>
+              <div style={{ display:"flex", gap:10 }}>
+                <button style={ob.btnBack} onClick={()=>setStep(1)}>← Retour</button>
+                <button style={{ ...ob.btn, flex:1, opacity:canNext2?1:0.35 }} onClick={nextStep} disabled={!canNext2}>Continuer →</button>
+              </div>
+            </div>
+          )}
+          {step===3 && (
+            <div style={ob.stepWrap}>
+              <div style={ob.stepTitle}>Ton Niveau 🎯</div>
+              <div style={ob.stepSub}>SquadBet adapte ses conseils à ton profil.</div>
+              <div style={ob.levelGrid}>
+                {LEVELS.map(lv=>(
+                  <button key={lv.id} style={{ ...ob.levelBtn, ...(niveau===lv.id?ob.levelBtnOn:{}) }} onClick={()=>setNiveau(lv.id)}>
+                    <span style={{ fontSize:24 }}>{lv.icon}</span>
+                    <span style={ob.levelLabel}>{lv.label}</span>
+                    <span style={ob.levelDesc}>{lv.desc}</span>
+                  </button>
+                ))}
+              </div>
+              <div style={{ display:"flex", gap:10, marginTop:8 }}>
+                <button style={ob.btnBack} onClick={()=>setStep(2)}>← Retour</button>
+                <button style={{ ...ob.btn, flex:1, opacity:canFinish?1:0.35 }} onClick={handleFinish} disabled={!canFinish}>Lancer SquadBet 🚀</button>
+              </div>
+            </div>
+          )}
+        </div>
+        <div style={ob.disclaimer}>⚠️ Paris sportifs réservés aux +18 ans. Jouez de façon responsable.</div>
+      </div>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500&display=swap');
+        *{box-sizing:border-box;margin:0;padding:0}
+        html,body{height:100%;overflow:hidden}
+        input:focus{border-color:rgba(212,175,55,0.5)!important;outline:none}
+        input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+      `}</style>
+    </div>
+  );
+}
+
+const ob = {
+  root:{ minHeight:"100vh", background:"#080810", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-end", fontFamily:"'DM Sans',sans-serif", position:"relative", overflow:"hidden" },
+  bgGrid:{ position:"fixed", inset:0, backgroundImage:"linear-gradient(rgba(212,175,55,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(212,175,55,0.025) 1px,transparent 1px)", backgroundSize:"48px 48px", pointerEvents:"none" },
+  card:{ width:"100%", background:"rgba(12,12,20,0.99)", border:"1px solid rgba(212,175,55,0.2)", padding:"28px 22px 36px", boxShadow:"0 -20px 60px rgba(0,0,0,0.5)", position:"relative", zIndex:1 },
+  logoRow:{ display:"flex", alignItems:"center", gap:12, marginBottom:24, paddingBottom:18, borderBottom:"1px solid rgba(212,175,55,0.1)" },
+  logoName:{ fontFamily:"'Playfair Display',serif", fontSize:22, color:"#D4AF37" },
+  logoSub:{ fontSize:11, color:"rgba(255,255,255,0.3)", marginTop:2 },
+  dots:{ display:"flex", gap:8, justifyContent:"center", marginBottom:24 },
+  dot:{ width:8, height:8, borderRadius:"50%", background:"rgba(255,255,255,0.1)", transition:"all 0.3s" },
+  dotOn:{ background:"#D4AF37", boxShadow:"0 0 8px rgba(212,175,55,0.6)", width:24, borderRadius:4 },
+  stepWrap:{ display:"flex", flexDirection:"column", gap:16, animation:"fadeUp 0.3s ease" },
+  stepTitle:{ fontFamily:"'Playfair Display',serif", fontSize:22, color:"rgba(255,255,255,0.92)" },
+  stepSub:{ fontSize:13, color:"rgba(255,255,255,0.4)", lineHeight:1.6 },
+  inputWrap:{ display:"flex", flexDirection:"column", gap:8 },
+  inputLabel:{ fontSize:11, color:"rgba(255,255,255,0.35)", letterSpacing:"0.8px", textTransform:"uppercase" },
+  input:{ background:"rgba(255,255,255,0.05)", border:"1px solid rgba(212,175,55,0.2)", borderRadius:12, padding:"14px 16px", color:"rgba(255,255,255,0.9)", fontSize:16, fontFamily:"'DM Sans',sans-serif", width:"100%", transition:"border-color 0.2s", WebkitAppearance:"none" },
+  inputHint:{ fontSize:11, color:"rgba(255,255,255,0.22)" },
+  eurWrap:{ position:"relative" },
+  eurSign:{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", color:"rgba(212,175,55,0.6)", fontSize:16, fontWeight:600, pointerEvents:"none" },
+  bankrollSuggest:{ display:"flex", gap:8, flexWrap:"wrap" },
+  chip:{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(212,175,55,0.15)", borderRadius:20, padding:"8px 16px", color:"rgba(255,255,255,0.45)", fontSize:14, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", transition:"all 0.15s", minHeight:44 },
+  chipOn:{ background:"rgba(212,175,55,0.15)", border:"1px solid rgba(212,175,55,0.4)", color:"#D4AF37" },
+  levelGrid:{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 },
+  levelBtn:{ display:"flex", flexDirection:"column", alignItems:"center", gap:5, padding:"14px 10px", background:"rgba(255,255,255,0.03)", border:"1px solid rgba(212,175,55,0.1)", borderRadius:14, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", transition:"all 0.2s", minHeight:90 },
+  levelBtnOn:{ background:"rgba(212,175,55,0.12)", border:"1px solid rgba(212,175,55,0.4)", boxShadow:"0 0 16px rgba(212,175,55,0.1)" },
+  levelLabel:{ fontSize:13, fontWeight:600, color:"rgba(255,255,255,0.8)" },
+  levelDesc:{ fontSize:10.5, color:"rgba(255,255,255,0.35)", textAlign:"center" },
+  btn:{ background:"linear-gradient(135deg,#D4AF37,#8B7320)", border:"none", borderRadius:12, padding:"15px 20px", color:"#080810", fontWeight:700, fontSize:15, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", transition:"opacity 0.2s", minHeight:50 },
+  btnBack:{ background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:12, padding:"15px 16px", color:"rgba(255,255,255,0.4)", fontWeight:500, fontSize:14, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", minHeight:50 },
+  disclaimer:{ textAlign:"center", fontSize:10, color:"rgba(255,255,255,0.18)", marginTop:20, letterSpacing:"0.3px" },
+};
+
+// ─── MAIN APP ────────────────────────────────────────────────────────────────
+export default function BettingAdvisor() {
+  const getSavedProfile = () => { try { const p=localStorage.getItem("squadbet_profile"); return p?JSON.parse(p):null; } catch(e){return null;} };
+  const [profile, setProfile] = useState(getSavedProfile);
+  const isMobile = useIsMobile();
+  const vh = useViewportHeight();
+
+  const [view, setView] = useState("chat");
+  const [sport, setSport] = useState("all");
+  const [messages, setMessages] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showSugg, setShowSugg] = useState(true);
+  const [bankroll, setBankroll] = useState(profile?.bankroll||200);
+  const [bankrollInput, setBankrollInput] = useState(String(profile?.bankroll||200));
+  const [editingBR, setEditingBR] = useState(false);
+  const [showAddBet, setShowAddBet] = useState(false);
+  const [newBet, setNewBet] = useState({ match:"", sport:"football", type:"", cote:"", mise:"" });
+  const [bets, setBets] = useState([
+    { id:1, match:"PSG vs Lyon", sport:"football", type:"1 (PSG)", cote:1.65, mise:20, statut:"gagné", date:"08/03/2025", gain:13 },
+    { id:2, match:"Djokovic vs Alcaraz", sport:"tennis", type:"Djokovic", cote:2.10, mise:15, statut:"perdu", date:"05/03/2025", gain:-15 },
+    { id:3, match:"Lakers vs Celtics", sport:"basketball", type:"Over 215.5", cote:1.90, mise:25, statut:"gagné", date:"02/03/2025", gain:22.5 },
+    { id:4, match:"Arsenal vs Chelsea", sport:"football", type:"BTTS", cote:1.75, mise:20, statut:"gagné", date:"28/02/2025", gain:15 },
+    { id:5, match:"Nadal vs Medvedev", sport:"tennis", type:"Nadal", cote:1.45, mise:30, statut:"perdu", date:"20/02/2025", gain:-30 },
+  ]);
+
+  const bottomRef = useRef(null);
+  const inputRef = useRef(null);
+  const chatAreaRef = useRef(null);
+
+  const getInitialMsg = useCallback((p) => ({
+    role:"assistant",
+    content:`Bienvenue **${p.pseudo}** sur SquadBet ! 👋\n\nProfil **${LEVELS.find(l=>l.id===p.niveau)?.label}** — Bankroll **${p.bankroll}€** — Mes conseils sont adaptés à ton niveau.\n\n🎯 Dis-moi sur quel match ou sujet tu veux travailler.`,
+  }), []);
+
+  useEffect(() => {
+    if (profile && messages.length === 0) setMessages([getInitialMsg(profile)]);
+  }, [profile, getInitialMsg, messages.length]);
+
+  useEffect(() => {
+    if (bottomRef.current && view === "chat") {
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior:"smooth", block:"end" }), 50);
+    }
+  }, [messages, loading, view]);
+
+  if (!profile) return <OnboardingScreen onComplete={p => { setProfile(p); setBankroll(p.bankroll); setBankrollInput(String(p.bankroll)); }} />;
+
+  const totalGains = bets.reduce((a,b)=>a+b.gain,0);
+  const totalMises = bets.reduce((a,b)=>a+b.mise,0);
+  const resolved = bets.filter(b=>b.statut!=="en cours");
+  const wins = bets.filter(b=>b.statut==="gagné");
+  const roi = totalMises>0?((totalGains/totalMises)*100).toFixed(1):0;
+  const winRate = resolved.length>0?((wins.length/resolved.length)*100).toFixed(0):0;
+  const avgCote = bets.length>0?(bets.reduce((a,b)=>a+b.cote,0)/bets.length).toFixed(2):0;
+
+  const sendMessage = async (text) => {
+    const userMsg = text||input.trim();
+    if (!userMsg||loading) return;
+    setInput(""); setShowSugg(false);
+    if (inputRef.current) inputRef.current.style.height = "44px";
+    const newMsg = { role:"user", content:userMsg };
+    const updatedHist = [...history, newMsg];
+    setMessages(prev=>[...prev, newMsg]);
+    setLoading(true);
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body:JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1200,
+          system: SYSTEM_PROMPT + `\n\nProfil utilisateur : pseudo "${profile.pseudo}", niveau "${profile.niveau}", bankroll actuelle ${bankroll}€.`,
+          messages: updatedHist }),
+      });
+      const data = await res.json();
+      const txt = data.content?.[0]?.text||"Je n'ai pas pu analyser ça.";
+      const aiMsg = { role:"assistant", content:txt };
+      setHistory([...updatedHist, aiMsg]);
+      setMessages(prev=>[...prev, aiMsg]);
+    } catch {
+      setMessages(prev=>[...prev, { role:"assistant", content:"⚠️ Erreur de connexion. Réessaie dans un instant." }]);
+    } finally { setLoading(false); }
+  };
+
+  const addBet = () => {
+    if (!newBet.match||!newBet.cote||!newBet.mise) return;
+    const mise=parseFloat(newBet.mise), cote=parseFloat(newBet.cote);
+    setBets(prev=>[{ id:Date.now(), ...newBet, cote, mise, statut:"en cours", date:new Date().toLocaleDateString("fr-FR"), gain:0 }, ...prev]);
+    setNewBet({ match:"", sport:"football", type:"", cote:"", mise:"" });
+    setShowAddBet(false);
+    setBankroll(br=>br-mise);
+  };
+
+  const updateBetStatus = (id, statut) => {
+    setBets(prev=>prev.map(b=>{
+      if (b.id!==id) return b;
+      const gain = statut==="gagné"?parseFloat(((b.cote-1)*b.mise).toFixed(2)):-b.mise;
+      if (statut==="gagné") setBankroll(br=>br+b.mise+gain);
+      return { ...b, statut, gain };
+    }));
+  };
+
+  const fmt = (text) => text
+    .replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")
+    .replace(/\*(.*?)\*/g,"<em>$1</em>")
+    .replace(/\n/g,"<br/>");
+
+  const handleTextareaChange = (e) => {
+    setInput(e.target.value);
+    e.target.style.height = "44px";
+    e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+  };
+
+  // ── LAYOUT VARS ────────────────────────────────────────────────────────────
+  const BOTTOM_NAV_H = isMobile ? 64 : 0;
+  const SIDEBAR_W = isMobile ? 0 : 230;
+  const appHeight = isMobile ? vh : "100vh";
+
+  return (
+    <div style={{ height: appHeight, width:"100vw", background:"#080810", display:"flex", flexDirection:"column", fontFamily:"'DM Sans',sans-serif", position:"relative", overflow:"hidden" }}>
+      <div style={s.bgGrid} />
+
+      {/* ── DESKTOP SIDEBAR ── */}
+      {!isMobile && (
+        <aside style={{ ...s.sidebar, position:"fixed", left:0, top:0, height:"100vh", zIndex:10 }}>
+          <div style={s.sideTop}>
+            <div style={s.logo}>
+              <SportsAvatar size={40} />
+              <div>
+                <div style={s.logoName}>SquadBet</div>
+                <div style={s.logoSub}>Expert Paris Sportifs</div>
+              </div>
+            </div>
+            <div style={s.profilePill}>
+              <div style={s.profileInfo}>
+                <div style={s.profilePseudo}>👤 {profile.pseudo}</div>
+                <div style={s.profileNiveau}>{LEVELS.find(l=>l.id===profile.niveau)?.icon} {LEVELS.find(l=>l.id===profile.niveau)?.label}</div>
+              </div>
+              <button style={s.profileReset} title="Changer de profil" onClick={() => { try{localStorage.removeItem("squadbet_profile")}catch(e){} setProfile(null); setMessages([]); }}>✕</button>
+            </div>
+            <div style={s.bankCard}>
+              <div style={s.bankLabel}>💰 Bankroll</div>
+              {editingBR ? (
+                <div style={{ display:"flex", gap:6 }}>
+                  <input style={s.bankInput} value={bankrollInput} onChange={e=>setBankrollInput(e.target.value)} onKeyDown={e=>{ if(e.key==="Enter"){ setBankroll(parseFloat(bankrollInput)||0); setEditingBR(false); }}} autoFocus inputMode="numeric" />
+                  <button style={s.bankSave} onClick={()=>{ setBankroll(parseFloat(bankrollInput)||0); setEditingBR(false); }}>✓</button>
+                </div>
+              ) : (
+                <div style={s.bankAmount} onClick={()=>{ setBankrollInput(String(bankroll)); setEditingBR(true); }}>
+                  {bankroll.toFixed(2)} € <span style={s.editHint}>✎</span>
+                </div>
+              )}
+              <div style={s.bankMeta}>Net : <span style={{ color:totalGains>=0?"#22c55e":"#ef4444" }}>{totalGains>=0?"+":""}{totalGains.toFixed(2)}€</span></div>
+            </div>
+            <nav style={s.nav}>
+              {NAV_ITEMS.map(item=>(
+                <button key={item.id} style={{ ...s.navBtn, ...(view===item.id?s.navBtnOn:{}) }} onClick={()=>setView(item.id)}>
+                  <span>{item.icon}</span><span>{item.label}</span>
+                </button>
+              ))}
+            </nav>
+          </div>
+          <div style={s.sideBot}>
+            <div style={s.warnBox}>
+              <div style={s.warnTitle}>⚠️ Jeu Responsable</div>
+              <div style={s.warnText}>Ne misez que ce que vous pouvez vous permettre de perdre. Interdit aux mineurs.</div>
+            </div>
+          </div>
+        </aside>
+      )}
+
+      {/* ── MOBILE TOP BAR ── */}
+      {isMobile && (
+        <div style={m.topBar}>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <SportsAvatar size={32} />
+            <div>
+              <div style={m.topBarName}>SquadBet</div>
+              <div style={m.topBarSub}>👤 {profile.pseudo} · {bankroll.toFixed(0)}€</div>
+            </div>
+          </div>
+          <button style={m.topBarReset} onClick={()=>{ try{localStorage.removeItem("squadbet_profile")}catch(e){} setProfile(null); setMessages([]); }}>✕</button>
+        </div>
+      )}
+
+      {/* ── MAIN CONTENT ── */}
+      <div style={{ flex:1, marginLeft: isMobile?0:SIDEBAR_W, display:"flex", flexDirection:"column", overflow:"hidden", position:"relative", zIndex:1 }}>
+
+        {/* ══ CHAT ══ */}
+        {view==="chat" && (
+          <div style={{ display:"flex", flexDirection:"column", height:"100%", overflow:"hidden" }}>
+            {/* Sport filter bar */}
+            <div style={{ ...s.topBar, overflowX:"auto", flexWrap:"nowrap", WebkitOverflowScrolling:"touch", scrollbarWidth:"none" }}>
+              {SPORTS.map(sp=>(
+                <button key={sp.id} style={{ ...s.sportBtn, ...(sport===sp.id?s.sportBtnOn:{}), flexShrink:0, minHeight:isMobile?40:32, padding: isMobile?"8px 12px":"5px 11px" }}
+                  onClick={()=>{ setSport(sp.id); setShowSugg(true); }}>
+                  {sp.icon} {sp.label}
+                </button>
+              ))}
+              <button style={{ ...s.clearBtn, flexShrink:0, minHeight:isMobile?40:32 }} onClick={()=>{ setMessages([getInitialMsg(profile)]); setHistory([]); setShowSugg(true); }}>🗑</button>
+            </div>
+
+            {/* Messages */}
+            <div ref={chatAreaRef} style={{ flex:1, overflowY:"auto", padding: isMobile?"14px 12px":"18px", display:"flex", flexDirection:"column", gap:12, WebkitOverflowScrolling:"touch" }}>
+              {messages.map((msg,i)=>(
+                <div key={i} style={{ ...s.msgRow, justifyContent:msg.role==="user"?"flex-end":"flex-start" }}>
+                  {msg.role==="assistant" && <SportsAvatar size={isMobile?24:26} />}
+                  <div style={{ ...(msg.role==="user"?s.userBubble:s.aiBubble), maxWidth:isMobile?"85%":"80%", fontSize:isMobile?14:13.5 }}
+                    dangerouslySetInnerHTML={{ __html:fmt(msg.content) }} />
+                </div>
+              ))}
+              {loading && (
+                <div style={{ ...s.msgRow, justifyContent:"flex-start" }}>
+                  <SportsAvatar size={isMobile?24:26} />
+                  <div style={s.aiBubble}>
+                    <div style={{ display:"flex", gap:5 }}>
+                      {[0,0.2,0.4].map((d,i)=><span key={i} style={{ ...s.tdot, animationDelay:`${d}s` }} />)}
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div ref={bottomRef} style={{ height:1 }} />
+            </div>
+
+            {/* Suggestions */}
+            {showSugg && (
+              <div style={{ padding: isMobile?"0 12px 8px":"0 18px 10px", flexShrink:0 }}>
+                <div style={s.suggLabel}>Suggestions rapides</div>
+                <div style={{ display:"flex", gap:6, overflowX:"auto", WebkitOverflowScrolling:"touch", scrollbarWidth:"none", paddingBottom:4 }}>
+                  {(QUICK_PROMPTS[sport]||QUICK_PROMPTS.all).map((q,i)=>(
+                    <button key={i} style={{ ...s.suggBtn, flexShrink:0, minHeight:isMobile?40:32, padding: isMobile?"8px 14px":"5px 12px", fontSize: isMobile?13:11.5 }} onClick={()=>sendMessage(q)}>{q}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Input */}
+            <div style={{ ...s.inputArea, padding: isMobile?"10px 12px":"12px 18px", paddingBottom: isMobile ? `calc(10px + env(safe-area-inset-bottom, 0px))` : "12px" }}>
+              <textarea ref={inputRef} style={{ ...s.textarea, fontSize:isMobile?16:13.5, minHeight:44, maxHeight:120, height:44, padding: isMobile?"12px 14px":"10px 14px" }}
+                value={input}
+                onChange={handleTextareaChange}
+                onKeyDown={e=>{ if(e.key==="Enter"&&!e.shiftKey&&!isMobile){ e.preventDefault(); sendMessage(); }}}
+                placeholder="Analyse un match, stratégie bankroll..."
+                rows={1} />
+              <button style={{ ...s.sendBtn, width:isMobile?48:38, height:isMobile?48:38, borderRadius:isMobile?14:9, fontSize:isMobile?18:14, opacity:input.trim()&&!loading?1:0.35 }}
+                onClick={()=>sendMessage()} disabled={!input.trim()||loading}>▲</button>
+            </div>
+          </div>
+        )}
+
+        {/* ══ CALCULATEURS ══ */}
+        {view==="bankroll" && (
+          <div style={{ ...s.pageView, paddingBottom: isMobile?`calc(24px + env(safe-area-inset-bottom, 0px))`:24 }}>
+            {/* Mobile bankroll edit */}
+            {isMobile && (
+              <div style={{ ...s.bankCard, marginBottom:16 }}>
+                <div style={s.bankLabel}>💰 Ma Bankroll</div>
+                {editingBR ? (
+                  <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                    <input style={{ ...s.bankInput, fontSize:20, padding:"6px 10px" }} value={bankrollInput} onChange={e=>setBankrollInput(e.target.value)} onKeyDown={e=>{ if(e.key==="Enter"){ setBankroll(parseFloat(bankrollInput)||0); setEditingBR(false); }}} autoFocus inputMode="numeric" />
+                    <button style={{ ...s.bankSave, padding:"8px 16px", fontSize:16 }} onClick={()=>{ setBankroll(parseFloat(bankrollInput)||0); setEditingBR(false); }}>✓</button>
+                  </div>
+                ) : (
+                  <div style={{ ...s.bankAmount, fontSize:26 }} onClick={()=>{ setBankrollInput(String(bankroll)); setEditingBR(true); }}>
+                    {bankroll.toFixed(2)} € <span style={s.editHint}>✎</span>
+                  </div>
+                )}
+                <div style={s.bankMeta}>Net : <span style={{ color:totalGains>=0?"#22c55e":"#ef4444" }}>{totalGains>=0?"+":""}{totalGains.toFixed(2)}€</span></div>
+              </div>
+            )}
+            <div style={s.pageTitle}>📊 Calculateurs</div>
+            <div style={s.pageSubtitle}>Outils pro pour optimiser tes mises</div>
+            <div style={s.card}><div style={s.cardTitle}>🎯 Calcul Kelly</div><KellyCalc bankroll={bankroll} /></div>
+            <div style={s.card}><div style={s.cardTitle}>💎 Détecteur Value Bet</div><ValueBetCalc /></div>
+            <div style={s.card}><div style={s.cardTitle}>🔗 Simulateur Combiné</div><ComboCalc bankroll={bankroll} /></div>
+          </div>
+        )}
+
+        {/* ══ HISTORIQUE ══ */}
+        {view==="history" && (
+          <div style={{ ...s.pageView, paddingBottom: isMobile?`calc(24px + env(safe-area-inset-bottom, 0px))`:24 }}>
+            <div style={s.histHeader}>
+              <div>
+                <div style={s.pageTitle}>📋 Mes Paris</div>
+                <div style={s.pageSubtitle}>{bets.length} paris · {bankroll.toFixed(2)}€</div>
+              </div>
+              <button style={{ ...s.addBtn, minHeight:44, padding:"10px 16px" }} onClick={()=>setShowAddBet(!showAddBet)}>+ Ajouter</button>
+            </div>
+            {showAddBet && (
+              <div style={{ ...s.card, marginBottom:14 }}>
+                <div style={s.cardTitle}>➕ Nouveau Pari</div>
+                <div style={{ display:"flex", flexDirection:"column", gap:10, marginTop:10 }}>
+                  <input style={s.formInput} placeholder="Match (ex: PSG vs Lyon)" value={newBet.match} onChange={e=>setNewBet({...newBet, match:e.target.value})} />
+                  <select style={s.formInput} value={newBet.sport} onChange={e=>setNewBet({...newBet, sport:e.target.value})}>
+                    {SPORTS.filter(sp=>sp.id!=="all").map(sp=><option key={sp.id} value={sp.id}>{sp.icon} {sp.label}</option>)}
+                  </select>
+                  <input style={s.formInput} placeholder="Type (ex: 1, BTTS, Over 2.5)" value={newBet.type} onChange={e=>setNewBet({...newBet, type:e.target.value})} />
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                    <input style={s.formInput} placeholder="Cote" type="number" step="0.01" inputMode="decimal" value={newBet.cote} onChange={e=>setNewBet({...newBet, cote:e.target.value})} />
+                    <input style={s.formInput} placeholder="Mise (€)" type="number" inputMode="numeric" value={newBet.mise} onChange={e=>setNewBet({...newBet, mise:e.target.value})} />
+                  </div>
+                  <button style={{ ...s.addBtn, minHeight:48 }} onClick={addBet}>Enregistrer le pari</button>
+                </div>
+              </div>
+            )}
+            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              {bets.map(bet=>(
+                <div key={bet.id} style={{ ...s.betRow, flexDirection: isMobile?"column":"row", alignItems: isMobile?"stretch":"center", gap: isMobile?10:0 }}>
+                  <div style={{ flex:1 }}>
+                    <div style={{ ...s.betMatch, fontSize: isMobile?15:13.5 }}>{bet.match}</div>
+                    <div style={s.betMeta}>
+                      <span>{SPORTS.find(x=>x.id===bet.sport)?.icon} {bet.sport}</span>
+                      <span>·</span><span style={{ color:"rgba(212,175,55,0.6)" }}>{bet.type}</span>
+                      <span>·</span><span>{bet.date}</span>
+                    </div>
+                  </div>
+                  <div style={{ display:"flex", gap:10, alignItems:"center", justifyContent: isMobile?"space-between":"flex-end" }}>
+                    <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                      <span style={{ ...s.betCote, fontSize: isMobile?14:12.5 }}>@{bet.cote}</span>
+                      <span style={{ ...s.betMise, fontSize: isMobile?14:12.5 }}>{bet.mise}€</span>
+                    </div>
+                    {bet.statut==="en cours" ? (
+                      <div style={{ display:"flex", gap:8 }}>
+                        <button style={{ ...s.winBtn, width:isMobile?44:28, height:isMobile?44:28, borderRadius:isMobile?10:5, fontSize:isMobile?18:13 }} onClick={()=>updateBetStatus(bet.id,"gagné")}>✓</button>
+                        <button style={{ ...s.loseBtn, width:isMobile?44:28, height:isMobile?44:28, borderRadius:isMobile?10:5, fontSize:isMobile?18:13 }} onClick={()=>updateBetStatus(bet.id,"perdu")}>✗</button>
+                      </div>
+                    ) : (
+                      <span style={{ fontSize:isMobile?16:14, fontWeight:700, color:bet.gain>=0?"#22c55e":"#ef4444" }}>
+                        {bet.gain>=0?"+":""}{bet.gain}€
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ══ STATS ══ */}
+        {view==="stats" && (
+          <div style={{ ...s.pageView, paddingBottom: isMobile?`calc(24px + env(safe-area-inset-bottom, 0px))`:24 }}>
+            <div style={s.pageTitle}>📈 Statistiques</div>
+            <div style={s.pageSubtitle}>Performance sur {resolved.length} paris résolus</div>
+            <div style={{ ...s.statsGrid, gridTemplateColumns: isMobile?"repeat(2,1fr)":"repeat(3,1fr)" }}>
+              {[
+                { label:"Taux de réussite", value:`${winRate}%`, color:"#D4AF37", icon:"🎯" },
+                { label:"ROI", value:`${roi}%`, color:totalGains>=0?"#22c55e":"#ef4444", icon:"💰" },
+                { label:"Gains nets", value:`${totalGains>=0?"+":""}${totalGains.toFixed(2)}€`, color:totalGains>=0?"#22c55e":"#ef4444", icon:"📊" },
+                { label:"Cote moyenne", value:avgCote, color:"#a78bfa", icon:"📐" },
+                { label:"Paris gagnés", value:`${wins.length}/${bets.length}`, color:"#22c55e", icon:"✅" },
+                { label:"Total misé", value:`${totalMises}€`, color:"rgba(255,255,255,0.6)", icon:"🏦" },
+              ].map((stat,i)=>(
+                <div key={i} style={{ ...s.statCard, padding: isMobile?"14px 10px":"16px 12px" }}>
+                  <div style={{ fontSize: isMobile?26:24 }}>{stat.icon}</div>
+                  <div style={{ fontSize: isMobile?20:22, fontWeight:700, color:stat.color, fontFamily:"'Playfair Display',serif" }}>{stat.value}</div>
+                  <div style={{ fontSize: isMobile?10:11, color:"rgba(255,255,255,0.35)", letterSpacing:"0.3px", textAlign:"center" }}>{stat.label}</div>
+                </div>
+              ))}
+            </div>
+            <div style={s.card}>
+              <div style={s.cardTitle}>Performance par Sport</div>
+              <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+                {SPORTS.filter(sp=>sp.id!=="all").map(sp=>{
+                  const sb=bets.filter(b=>b.sport===sp.id&&b.statut!=="en cours");
+                  if (!sb.length) return null;
+                  const won=sb.filter(b=>b.statut==="gagné").length;
+                  const pct=((won/sb.length)*100).toFixed(0);
+                  return (
+                    <div key={sp.id} style={{ display:"flex", alignItems:"center", gap:10 }}>
+                      <div style={{ width:isMobile?80:110, fontSize:12, color:"rgba(255,255,255,0.6)", flexShrink:0 }}>{sp.icon} {sp.label}</div>
+                      <div style={{ flex:1, height:isMobile?8:6, background:"rgba(255,255,255,0.06)", borderRadius:4, overflow:"hidden" }}>
+                        <div style={{ width:`${pct}%`, height:"100%", background:"linear-gradient(90deg,#D4AF37,#8B7320)", borderRadius:4, transition:"width 0.6s ease" }} />
+                      </div>
+                      <div style={{ width:80, fontSize:11, color:"rgba(255,255,255,0.4)", textAlign:"right", flexShrink:0 }}>{pct}% ({won}/{sb.length})</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div style={{ ...s.card, borderColor:"rgba(212,175,55,0.3)", background:"rgba(212,175,55,0.05)" }}>
+              <div style={s.cardTitle}>💡 Conseil SquadBet</div>
+              <div style={{ color:"rgba(255,255,255,0.65)", fontSize:isMobile?14:13, lineHeight:1.75 }}>
+                {parseFloat(roi)>5
+                  ?"✅ Excellent ROI ! Tu es au-dessus de la moyenne des parieurs professionnels. Continue à être rigoureux."
+                  :parseFloat(roi)>0
+                  ?"⚡ ROI positif — tu es dans la bonne direction. Concentre-toi sur les marchés où tu performes le mieux."
+                  :"⚠️ ROI négatif. Revois ta sélection — qualité plutôt que quantité. Analyse tes paris perdants pour identifier des patterns."}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── MOBILE BOTTOM NAV ── */}
+      {isMobile && (
+        <div style={m.bottomNav}>
+          {NAV_ITEMS.map(item=>(
+            <button key={item.id} style={{ ...m.navBtn, ...(view===item.id?m.navBtnOn:{}) }} onClick={()=>setView(item.id)}>
+              <span style={{ fontSize:22 }}>{item.icon}</span>
+              <span style={{ fontSize:10, marginTop:2, fontWeight: view===item.id?700:400 }}>{item.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500&display=swap');
+        *{box-sizing:border-box;margin:0;padding:0}
+        html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+        body{background:#080810;overscroll-behavior:none;-webkit-font-smoothing:antialiased}
+        ::-webkit-scrollbar{width:3px;height:3px}
+        ::-webkit-scrollbar-thumb{background:rgba(212,175,55,0.2);border-radius:4px}
+        div::-webkit-scrollbar{display:none}
+        @keyframes pulse{0%,100%{opacity:0.2}50%{opacity:1}}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        textarea:focus,input:focus,select:focus{outline:none;border-color:rgba(212,175,55,0.5)!important}
+        textarea{-webkit-appearance:none;appearance:none}
+        input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+        option{background:#0f0f1a;color:white}
+        button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+        input,textarea,select{-webkit-tap-highlight-color:transparent;font-size:16px}
+      `}</style>
+    </div>
+  );
+}
+
+// ─── DESKTOP STYLES ───────────────────────────────────────────────────────────
+const s = {
+  bgGrid:{ position:"fixed", inset:0, backgroundImage:"linear-gradient(rgba(212,175,55,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(212,175,55,0.02) 1px,transparent 1px)", backgroundSize:"48px 48px", pointerEvents:"none", zIndex:0 },
+  sidebar:{ width:230, background:"rgba(8,8,16,0.99)", borderRight:"1px solid rgba(212,175,55,0.1)", display:"flex", flexDirection:"column", justifyContent:"space-between" },
+  sideTop:{ padding:"18px 14px", display:"flex", flexDirection:"column", gap:18 },
+  logo:{ display:"flex", alignItems:"center", gap:11, paddingBottom:14, borderBottom:"1px solid rgba(212,175,55,0.08)" },
+  logoName:{ fontFamily:"'Playfair Display',serif", fontSize:14, color:"#D4AF37" },
+  logoSub:{ fontSize:9.5, color:"rgba(255,255,255,0.3)", marginTop:2 },
+  profilePill:{ display:"flex", alignItems:"center", justifyContent:"space-between", background:"rgba(212,175,55,0.07)", border:"1px solid rgba(212,175,55,0.15)", borderRadius:9, padding:"9px 12px" },
+  profileInfo:{ display:"flex", flexDirection:"column", gap:3 },
+  profilePseudo:{ fontSize:13, fontWeight:600, color:"rgba(255,255,255,0.8)" },
+  profileNiveau:{ fontSize:10.5, color:"rgba(212,175,55,0.7)" },
+  profileReset:{ background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:5, width:22, height:22, color:"rgba(255,255,255,0.3)", cursor:"pointer", fontSize:9 },
+  bankCard:{ background:"rgba(212,175,55,0.06)", border:"1px solid rgba(212,175,55,0.15)", borderRadius:9, padding:"11px 13px" },
+  bankLabel:{ fontSize:10, color:"rgba(255,255,255,0.35)", marginBottom:5, letterSpacing:"0.5px" },
+  bankAmount:{ fontSize:21, fontWeight:700, color:"#D4AF37", cursor:"pointer", display:"flex", alignItems:"center", gap:7 },
+  editHint:{ fontSize:12, color:"rgba(212,175,55,0.35)", fontWeight:400 },
+  bankInput:{ background:"rgba(255,255,255,0.07)", border:"1px solid rgba(212,175,55,0.3)", borderRadius:6, padding:"4px 8px", color:"#D4AF37", fontSize:17, fontWeight:700, width:"100%", fontFamily:"'DM Sans',sans-serif" },
+  bankSave:{ background:"#D4AF37", border:"none", borderRadius:6, padding:"4px 10px", color:"#080810", cursor:"pointer", fontWeight:700 },
+  bankMeta:{ fontSize:11, color:"rgba(255,255,255,0.3)", marginTop:5 },
+  nav:{ display:"flex", flexDirection:"column", gap:3 },
+  navBtn:{ display:"flex", alignItems:"center", gap:9, padding:"9px 11px", borderRadius:7, border:"none", background:"transparent", color:"rgba(255,255,255,0.4)", fontSize:13, cursor:"pointer", textAlign:"left", fontFamily:"'DM Sans',sans-serif" },
+  navBtnOn:{ background:"rgba(212,175,55,0.1)", color:"#D4AF37", border:"1px solid rgba(212,175,55,0.18)" },
+  sideBot:{ padding:14 },
+  warnBox:{ background:"rgba(239,68,68,0.05)", border:"1px solid rgba(239,68,68,0.15)", borderRadius:8, padding:"9px 11px" },
+  warnTitle:{ fontSize:10.5, fontWeight:600, color:"#fca5a5", marginBottom:4 },
+  warnText:{ fontSize:9.5, color:"rgba(255,255,255,0.25)", lineHeight:1.55 },
+  topBar:{ display:"flex", alignItems:"center", gap:6, padding:"8px 12px", borderBottom:"1px solid rgba(212,175,55,0.07)", flexShrink:0 },
+  sportBtn:{ padding:"5px 11px", borderRadius:18, border:"1px solid rgba(255,255,255,0.08)", background:"transparent", color:"rgba(255,255,255,0.35)", fontSize:12, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" },
+  sportBtnOn:{ background:"rgba(212,175,55,0.12)", border:"1px solid rgba(212,175,55,0.3)", color:"#D4AF37" },
+  clearBtn:{ padding:"5px 10px", borderRadius:18, border:"1px solid rgba(255,255,255,0.07)", background:"transparent", color:"rgba(255,255,255,0.25)", fontSize:11, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" },
+  msgRow:{ display:"flex", alignItems:"flex-end", gap:9, animation:"fadeUp 0.3s ease" },
+  aiBubble:{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(212,175,55,0.1)", borderRadius:"14px 14px 14px 3px", padding:"12px 15px", color:"rgba(255,255,255,0.82)", fontSize:13.5, lineHeight:1.75, maxWidth:"80%", wordBreak:"break-word" },
+  userBubble:{ background:"linear-gradient(135deg,rgba(212,175,55,0.17),rgba(139,115,32,0.1))", border:"1px solid rgba(212,175,55,0.2)", borderRadius:"14px 14px 3px 14px", padding:"11px 14px", color:"rgba(255,255,255,0.9)", fontSize:13.5, lineHeight:1.65, maxWidth:"70%", wordBreak:"break-word" },
+  tdot:{ display:"inline-block", width:7, height:7, borderRadius:"50%", background:"#D4AF37", animation:"pulse 1.2s infinite" },
+  suggLabel:{ fontSize:10, color:"rgba(255,255,255,0.2)", letterSpacing:"1px", textTransform:"uppercase", marginBottom:7 },
+  suggBtn:{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(212,175,55,0.13)", borderRadius:20, padding:"5px 12px", color:"rgba(255,255,255,0.45)", fontSize:12, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", whiteSpace:"nowrap" },
+  inputArea:{ display:"flex", alignItems:"flex-end", gap:9, borderTop:"1px solid rgba(212,175,55,0.07)", background:"rgba(0,0,0,0.3)", flexShrink:0 },
+  textarea:{ flex:1, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(212,175,55,0.15)", borderRadius:12, padding:"10px 14px", color:"rgba(255,255,255,0.9)", fontSize:16, fontFamily:"'DM Sans',sans-serif", resize:"none", lineHeight:1.5, overflowY:"auto", WebkitAppearance:"none" },
+  sendBtn:{ borderRadius:12, background:"linear-gradient(135deg,#D4AF37,#8B7320)", border:"none", cursor:"pointer", color:"#080810", fontWeight:"bold", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 },
+  pageView:{ flex:1, overflowY:"auto", padding:"20px 16px", WebkitOverflowScrolling:"touch" },
+  pageTitle:{ fontFamily:"'Playfair Display',serif", fontSize:20, color:"#D4AF37", marginBottom:4 },
+  pageSubtitle:{ fontSize:12.5, color:"rgba(255,255,255,0.3)", marginBottom:18 },
+  card:{ background:"rgba(255,255,255,0.025)", border:"1px solid rgba(212,175,55,0.1)", borderRadius:14, padding:"16px", marginBottom:14 },
+  cardTitle:{ fontSize:13.5, fontWeight:600, color:"rgba(255,255,255,0.65)", marginBottom:14 },
+  calcField:{ display:"flex", flexDirection:"column", gap:8 },
+  calcLabel:{ fontSize:13, color:"rgba(255,255,255,0.45)" },
+  slider:{ width:"100%", accentColor:"#D4AF37", cursor:"pointer", height:6 },
+  numInput:{ background:"rgba(255,255,255,0.05)", border:"1px solid rgba(212,175,55,0.18)", borderRadius:10, padding:"12px 14px", color:"rgba(255,255,255,0.85)", fontSize:16, fontFamily:"'DM Sans',sans-serif", width:"100%", WebkitAppearance:"none" },
+  calcResult:{ display:"flex", flexDirection:"column", gap:10, marginTop:6 },
+  calcRow:{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:13, color:"rgba(255,255,255,0.55)" },
+  addLegBtn:{ background:"transparent", border:"1px dashed rgba(212,175,55,0.2)", borderRadius:10, padding:"10px", color:"rgba(212,175,55,0.45)", fontSize:13, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", minHeight:44 },
+  removeBtn:{ background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.18)", borderRadius:8, width:36, height:36, color:"#ef4444", cursor:"pointer", fontSize:14, flexShrink:0 },
+  histHeader:{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:16 },
+  addBtn:{ background:"linear-gradient(135deg,#D4AF37,#8B7320)", border:"none", borderRadius:10, padding:"8px 15px", color:"#080810", fontWeight:600, fontSize:13, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" },
+  formInput:{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(212,175,55,0.13)", borderRadius:10, padding:"12px 14px", color:"rgba(255,255,255,0.85)", fontSize:16, fontFamily:"'DM Sans',sans-serif", width:"100%", WebkitAppearance:"none" },
+  betRow:{ display:"flex", justifyContent:"space-between", alignItems:"center", background:"rgba(255,255,255,0.025)", border:"1px solid rgba(212,175,55,0.07)", borderRadius:12, padding:"14px", animation:"fadeUp 0.2s ease" },
+  betMatch:{ fontSize:13.5, color:"rgba(255,255,255,0.82)", fontWeight:500, marginBottom:4 },
+  betMeta:{ display:"flex", gap:7, fontSize:11, color:"rgba(255,255,255,0.28)", alignItems:"center", flexWrap:"wrap" },
+  betRight:{ display:"flex", gap:10, alignItems:"center" },
+  betCote:{ fontSize:12.5, color:"#a78bfa", fontWeight:600 },
+  betMise:{ fontSize:12.5, color:"rgba(255,255,255,0.5)" },
+  winBtn:{ background:"rgba(34,197,94,0.12)", border:"1px solid rgba(34,197,94,0.25)", borderRadius:8, width:36, height:36, color:"#22c55e", cursor:"pointer", fontWeight:700, fontSize:16 },
+  loseBtn:{ background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.22)", borderRadius:8, width:36, height:36, color:"#ef4444", cursor:"pointer", fontWeight:700, fontSize:16 },
+  statsGrid:{ display:"grid", gap:10, marginBottom:14 },
+  statCard:{ background:"rgba(255,255,255,0.025)", border:"1px solid rgba(212,175,55,0.09)", borderRadius:12, padding:"16px 12px", display:"flex", flexDirection:"column", alignItems:"center", gap:5, textAlign:"center" },
+};
+
+// ─── MOBILE-ONLY STYLES ───────────────────────────────────────────────────────
+const m = {
+  topBar:{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 16px", paddingTop:"calc(10px + env(safe-area-inset-top, 0px))", background:"rgba(8,8,16,0.98)", borderBottom:"1px solid rgba(212,175,55,0.1)", flexShrink:0, zIndex:5 },
+  topBarName:{ fontFamily:"'Playfair Display',serif", fontSize:15, color:"#D4AF37" },
+  topBarSub:{ fontSize:11, color:"rgba(255,255,255,0.35)", marginTop:1 },
+  topBarReset:{ background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:8, width:36, height:36, color:"rgba(255,255,255,0.35)", cursor:"pointer", fontSize:12, display:"flex", alignItems:"center", justifyContent:"center" },
+  bottomNav:{ display:"flex", alignItems:"stretch", background:"rgba(8,8,16,0.98)", borderTop:"1px solid rgba(212,175,55,0.12)", paddingBottom:"env(safe-area-inset-bottom, 0px)", flexShrink:0, zIndex:10 },
+  navBtn:{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2, padding:"10px 4px", border:"none", background:"transparent", color:"rgba(255,255,255,0.35)", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", minHeight:56, WebkitTapHighlightColor:"transparent" },
+  navBtnOn:{ color:"#D4AF37" },
+};
