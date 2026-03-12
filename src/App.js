@@ -424,7 +424,7 @@ export default function BettingAdvisor() {
       const res = await fetch("/api/chat", {
         method:"POST",
         headers:{ "Content-Type":"application/json" },
-        body:JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:3000,
+        body:JSON.stringify({ model:"gemini-2.0-flash", max_tokens:3000,
           system: SYSTEM_PROMPT + `\n\nProfil utilisateur : pseudo "${profile.pseudo}", niveau "${profile.niveau}", bankroll actuelle ${bankroll}€.`,
           messages: updatedHist }),
       });
