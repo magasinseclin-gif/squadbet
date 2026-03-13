@@ -30,32 +30,51 @@ export default async function handler(req, res) {
       },
     };
 
-    // Gemini 1.5 Flash — 1500 req/jour gratuites
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(geminiBody),
+    // On essaie plusieurs noms de modèles jusqu'à trouver celui qui marche
+    const MODELS = [
+      "gemini-2.0-flash-lite",
+      "gemini-2.0-flash",
+      "gemini-1.5-flash-001",
+      "gemini-1.5-flash",
+      "gemini-pro",
+    ];
+
+    let lastError = null;
+
+    for (const model of MODELS) {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(geminiBody),
+        }
+      );
+
+      const data = await response.json();
+
+      // Si le modèle n'existe pas, on essaie le suivant
+      if (!response.ok) {
+        lastError = data.error?.message || `Erreur ${response.status}`;
+        if (lastError.includes("not found") || lastError.includes("not supported") || response.status === 404) {
+          continue;
+        }
+        // Autre erreur (quota, auth...) → on arrête
+        return res.status(response.status).json({ error: lastError });
       }
-    );
 
-    const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts
+        ?.filter(p => p.text)
+        ?.map(p => p.text)
+        ?.join("\n") || "Je n'ai pas pu analyser ça.";
 
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: data.error?.message || JSON.stringify(data.error) || "Erreur Gemini"
+      return res.status(200).json({
+        content: [{ type: "text", text }],
+        model_used: model,
       });
     }
 
-    const text = data.candidates?.[0]?.content?.parts
-      ?.filter(p => p.text)
-      ?.map(p => p.text)
-      ?.join("\n") || "Je n'ai pas pu analyser ça.";
-
-    return res.status(200).json({
-      content: [{ type: "text", text }]
-    });
+    return res.status(500).json({ error: `Aucun modèle disponible. Dernière erreur : ${lastError}` });
 
   } catch (error) {
     return res.status(500).json({ error: error.message || "Erreur serveur" });
