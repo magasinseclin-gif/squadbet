@@ -1099,6 +1099,11 @@ export default function BettingAdvisor() {
               <span style={{ fontSize:10, marginTop:2, fontWeight: view===item.id?700:400 }}>{item.label}</span>
             </button>
           ))}
+          {/* Bouton thème dans la bottom nav */}
+          <button onClick={toggleTheme} style={{ ...m.navBtn, minWidth:52 }}>
+            <span style={{ fontSize:22 }}>{isDark ? "☀️" : "🌙"}</span>
+            <span style={{ fontSize:10, marginTop:2 }}>{isDark ? "Jour" : "Nuit"}</span>
+          </button>
         </div>
       )}
 
