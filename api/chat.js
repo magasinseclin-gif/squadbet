@@ -30,18 +30,21 @@ export default async function handler(req, res) {
       },
     };
 
-    // On essaie plusieurs noms de modèles jusqu'à trouver celui qui marche
+    // Noms exacts selon la doc officielle Gemini API 2025
     const MODELS = [
-      "gemini-2.0-flash-lite",
-      "gemini-2.0-flash",
+      "gemini-1.5-flash-8b",
+      "gemini-1.5-flash-8b-001",
+      "gemini-1.5-flash-002",
       "gemini-1.5-flash-001",
-      "gemini-1.5-flash",
-      "gemini-pro",
+      "gemini-1.0-pro",
+      "gemini-1.0-pro-001",
     ];
 
     let lastError = null;
+    const tried = [];
 
     for (const model of MODELS) {
+      tried.push(model);
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         {
@@ -52,14 +55,12 @@ export default async function handler(req, res) {
       );
 
       const data = await response.json();
+      lastError = data.error?.message || "";
 
-      // Si le modèle n'existe pas, on essaie le suivant
       if (!response.ok) {
-        lastError = data.error?.message || `Erreur ${response.status}`;
         if (lastError.includes("not found") || lastError.includes("not supported") || response.status === 404) {
           continue;
         }
-        // Autre erreur (quota, auth...) → on arrête
         return res.status(response.status).json({ error: lastError });
       }
 
@@ -68,13 +69,22 @@ export default async function handler(req, res) {
         ?.map(p => p.text)
         ?.join("\n") || "Je n'ai pas pu analyser ça.";
 
-      return res.status(200).json({
-        content: [{ type: "text", text }],
-        model_used: model,
-      });
+      return res.status(200).json({ content: [{ type: "text", text }], model_used: model });
     }
 
-    return res.status(500).json({ error: `Aucun modèle disponible. Dernière erreur : ${lastError}` });
+    // Si aucun modèle ne marche, on liste ceux disponibles pour déboguer
+    const listRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+    );
+    const listData = await listRes.json();
+    const available = listData.models
+      ?.filter(m => m.supportedGenerationMethods?.includes("generateContent"))
+      ?.map(m => m.name)
+      ?.join(", ") || "impossible de lister";
+
+    return res.status(500).json({
+      error: `Modèles essayés : ${tried.join(", ")}. Modèles disponibles sur ta clé : ${available}`
+    });
 
   } catch (error) {
     return res.status(500).json({ error: error.message || "Erreur serveur" });
