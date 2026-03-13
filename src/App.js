@@ -143,7 +143,8 @@ function SportsAvatar({ size = 40 }) {
 // ─── CALCULATORS ─────────────────────────────────────────────────────────────
 
 // Kelly simplifié : l'utilisateur entre sa mise et la cote, Kelly dit si c'est bien
-function KellyCalc({ bankroll }) {
+function KellyCalc({ bankroll, isDark = true }) {
+  const tc = isDark ? { text:"rgba(255,255,255,0.8)", muted:"rgba(255,255,255,0.5)", faint:"rgba(255,255,255,0.3)", border:"rgba(255,255,255,0.08)", gold:"#D4AF37" } : { text:"rgba(20,16,8,0.85)", muted:"rgba(20,16,8,0.55)", faint:"rgba(20,16,8,0.35)", border:"rgba(0,0,0,0.1)", gold:"#9A7A1A" };
   const [mise, setMise] = useState(20);
   const [cote, setCote] = useState(1.90);
   const [confiance, setConfiance] = useState("moyen");
@@ -166,8 +167,8 @@ function KellyCalc({ bankroll }) {
     <div style={{ display:"flex", flexDirection:"column", gap:18 }}>
       {/* Explication simple */}
       <div style={{ background:"rgba(212,175,55,0.06)", border:"1px solid rgba(212,175,55,0.15)", borderRadius:10, padding:"12px 14px" }}>
-        <div style={{ fontSize:12, color:"rgba(255,255,255,0.5)", lineHeight:1.6 }}>
-          💡 <strong style={{ color:"rgba(255,255,255,0.8)" }}>Comment ça marche ?</strong> Tu entres ta mise et la cote. Kelly calcule si ta mise est raisonnable selon ton niveau de confiance.
+        <div style={{ fontSize:12, color:tc.muted, lineHeight:1.6 }}>
+          💡 <strong style={{ color:tc.text }}>Comment ça marche ?</strong> Tu entres ta mise et la cote. Kelly calcule si ta mise est raisonnable selon ton niveau de confiance.
         </div>
       </div>
 
@@ -178,9 +179,9 @@ function KellyCalc({ bankroll }) {
           <input type="number" inputMode="numeric" value={mise}
             onChange={e=>setMise(Math.max(1,+e.target.value))}
             style={{ ...s.numInput, flex:1 }} />
-          <span style={{ color:"#D4AF37", fontWeight:700, fontSize:15 }}>€</span>
+          <span style={{ color:tc.gold, fontWeight:700, fontSize:15 }}>€</span>
         </div>
-        <div style={{ fontSize:11, color:"rgba(255,255,255,0.3)", marginTop:4 }}>
+        <div style={{ fontSize:11, color:tc.faint, marginTop:4 }}>
           Soit {misePct}% de ta bankroll ({bankroll}€)
         </div>
       </div>
@@ -199,9 +200,9 @@ function KellyCalc({ bankroll }) {
         <div style={{ display:"flex", gap:8 }}>
           {[["faible","🧊 Faible"],["moyen","⚡ Moyen"],["eleve","🔥 Élevé"]].map(([k,l])=>(
             <button key={k}
-              style={{ flex:1, padding:"10px 6px", borderRadius:10, border:`1px solid ${confiance===k?"rgba(212,175,55,0.5)":"rgba(255,255,255,0.08)"}`,
+              style={{ flex:1, padding:"10px 6px", borderRadius:10, border:`1px solid ${confiance===k?"rgba(212,175,55,0.5)":tc.border}`,
                 background:confiance===k?"rgba(212,175,55,0.15)":"transparent",
-                color:confiance===k?"#D4AF37":"rgba(255,255,255,0.4)",
+                color:confiance===k?tc.gold:tc.muted,
                 fontSize:12, fontWeight:confiance===k?700:400, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", minHeight:44 }}
               onClick={()=>setConfiance(k)}>{l}
             </button>
@@ -210,7 +211,7 @@ function KellyCalc({ bankroll }) {
       </div>
 
       {/* Résultat */}
-      <div style={{ background:"rgba(255,255,255,0.03)", border:`1px solid ${verdictColor}40`, borderRadius:12, padding:"16px" }}>
+      <div style={{ background:isDark?"rgba(255,255,255,0.03)":"rgba(0,0,0,0.02)", border:`1px solid ${verdictColor}40`, borderRadius:12, padding:"16px" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
           <span style={{ fontSize:15, fontWeight:700, color:verdictColor }}>{verdict}</span>
         </div>
@@ -234,6 +235,7 @@ function KellyCalc({ bankroll }) {
 
 // Value Bet IA : sélection sport → matchs du jour → cote bookie → analyse IA → cote juste
 function ValueBetCalc({ isDark = true }) {
+  const tc = isDark ? { text:"rgba(255,255,255,0.8)", muted:"rgba(255,255,255,0.5)", faint:"rgba(255,255,255,0.3)", border:"rgba(255,255,255,0.08)", gold:"#D4AF37" } : { text:"rgba(20,16,8,0.85)", muted:"rgba(20,16,8,0.55)", faint:"rgba(20,16,8,0.35)", border:"rgba(0,0,0,0.1)", gold:"#9A7A1A" };
   const SPORTS_VB = [
     { id:"football",   label:"Football",   icon:"⚽" },
     { id:"tennis",     label:"Tennis",     icon:"🎾" },
@@ -331,7 +333,7 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
 
       {/* STEP 1 — Choix du sport */}
       <div>
-        <div style={{ ...s.calcLabel, marginBottom:10 }}>1️⃣ Choisis un sport</div>
+        <div style={{ ...s.calcLabel, color:tc.muted, marginBottom:10 }}>1️⃣ Choisis un sport</div>
         <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
           {SPORTS_VB.map(sp=>(
             <button key={sp.id}
@@ -350,7 +352,7 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
       {/* STEP 2 — Match + cote */}
       {step >= 2 && (
         <div style={{ display:"flex", flexDirection:"column", gap:14, borderTop:"1px solid rgba(212,175,55,0.1)", paddingTop:16 }}>
-          <div style={{ ...s.calcLabel }}>2️⃣ Sélectionne le match</div>
+          <div style={{ ...s.calcLabel, color:tc.muted }}>2️⃣ Sélectionne le match</div>
 
           {loadingMatches ? (
             <div style={{ display:"flex", alignItems:"center", gap:10, color:isDark?"rgba(255,255,255,0.4)":"rgba(20,16,8,0.4)", fontSize:13 }}>
@@ -381,11 +383,11 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
           {selectedMatch && !loadingMatches && (
             <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
               <div style={s.calcField}>
-                <label style={s.calcLabel}>Type de pari <span style={{ color:"rgba(255,255,255,0.3)", fontSize:11 }}>(optionnel)</span></label>
+                <label style={{ ...s.calcLabel, color:tc.muted }}>Type de pari <span style={{ color:tc.faint, fontSize:11 }}>(optionnel)</span></label>
                 <input style={s.numInput} placeholder="Ex: 1, BTTS, Over 2.5, Victoire X..." value={typePari} onChange={e=>setTypePari(e.target.value)} />
               </div>
               <div style={s.calcField}>
-                <label style={s.calcLabel}>3️⃣ Cote proposée par ton bookie</label>
+                <label style={{ ...s.calcLabel, color:tc.muted }}>3️⃣ Cote proposée par ton bookie</label>
                 <input type="number" step="0.05" inputMode="decimal" value={coteBookie}
                   onChange={e=>setCoteBookie(e.target.value)} style={s.numInput} placeholder="Ex: 2.10" />
               </div>
@@ -421,24 +423,24 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
                   {analysis.verdict}
                 </div>
                 <div style={{ display:"flex", gap:16, flexWrap:"wrap" }}>
-                  <span style={{ fontSize:13, color:"rgba(255,255,255,0.6)" }}>
+                  <span style={{ fontSize:13, color:tc.muted }}>
                     Cote juste : <strong style={{ color:"#a78bfa" }}>@{analysis.coteJuste}</strong>
                   </span>
-                  <span style={{ fontSize:13, color:"rgba(255,255,255,0.6)" }}>
-                    Cote bookie : <strong style={{ color:"rgba(255,255,255,0.9)" }}>@{coteBookie}</strong>
+                  <span style={{ fontSize:13, color:tc.muted }}>
+                    Cote bookie : <strong style={{ color:tc.text }}>@{coteBookie}</strong>
                   </span>
-                  <span style={{ fontSize:13, color:"rgba(255,255,255,0.6)" }}>
+                  <span style={{ fontSize:13, color:tc.muted }}>
                     Edge : <strong style={{ color:analysis.isValue?"#22c55e":"#ef4444" }}>
                       {analysis.valueEdge > 0 ? "+" : ""}{analysis.valueEdge}%
                     </strong>
                   </span>
-                  <span style={{ fontSize:13, color:"rgba(255,255,255,0.6)" }}>
+                  <span style={{ fontSize:13, color:tc.muted }}>
                     Confiance : <strong style={{ color:"#D4AF37" }}>{analysis.confiance}</strong>
                   </span>
                 </div>
               </div>
               {/* Raisonnement */}
-              <div style={{ fontSize:13, color:"rgba(255,255,255,0.65)", lineHeight:1.7, background:"rgba(255,255,255,0.02)", borderRadius:10, padding:"12px 14px" }}>
+              <div style={{ fontSize:13, color:tc.muted, lineHeight:1.7, background:isDark?"rgba(255,255,255,0.02)":"rgba(0,0,0,0.03)", borderRadius:10, padding:"12px 14px" }}>
                 {analysis.raisonnement}
               </div>
               {analysis.risques && (
@@ -460,7 +462,8 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
 }
 
 
-function ComboCalc({ bankroll }) {
+function ComboCalc({ bankroll, isDark = true }) {
+  const tc = isDark ? { text:"rgba(255,255,255,0.8)", muted:"rgba(255,255,255,0.5)", faint:"rgba(255,255,255,0.3)", border:"rgba(255,255,255,0.08)", gold:"#D4AF37" } : { text:"rgba(20,16,8,0.85)", muted:"rgba(20,16,8,0.55)", faint:"rgba(20,16,8,0.35)", border:"rgba(0,0,0,0.1)", gold:"#9A7A1A" };
   const [legs, setLegs] = useState([{ match:"PSG vs Lyon", cote:1.65 }, { match:"Real vs Barça", cote:2.10 }]);
   const [mise, setMise] = useState(20);
   const totalCote = legs.reduce((a,l)=>a*l.cote,1);
@@ -971,9 +974,9 @@ export default function BettingAdvisor() {
             )}
             <div style={s.pageTitle}>📊 Calculateurs</div>
             <div style={s.pageSubtitle}>Outils pro pour optimiser tes mises</div>
-            <div style={s.card}><div style={s.cardTitle}>🎯 Calcul Kelly</div><KellyCalc bankroll={bankroll} /></div>
+            <div style={s.card}><div style={s.cardTitle}>🎯 Calcul Kelly</div><KellyCalc bankroll={bankroll} isDark={isDark} /></div>
             <div style={s.card}><div style={s.cardTitle}>💎 Détecteur Value Bet</div><ValueBetCalc isDark={isDark} /></div>
-            <div style={s.card}><div style={s.cardTitle}>🔗 Simulateur Combiné</div><ComboCalc bankroll={bankroll} /></div>
+            <div style={s.card}><div style={s.cardTitle}>🔗 Simulateur Combiné</div><ComboCalc bankroll={bankroll} isDark={isDark} /></div>
           </div>
         )}
 
