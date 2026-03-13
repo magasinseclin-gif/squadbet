@@ -178,7 +178,7 @@ function KellyCalc({ bankroll, isDark = true }) {
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
           <input type="number" inputMode="numeric" value={mise}
             onChange={e=>setMise(Math.max(1,+e.target.value))}
-            style={{ ...s.numInput, flex:1 }} />
+            style={{ ...s.numInput, flex:1, color:tc.text, background:isDark?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.9)", borderColor:isDark?"rgba(212,175,55,0.15)":"rgba(0,0,0,0.15)" }} />
           <span style={{ color:tc.gold, fontWeight:700, fontSize:15 }}>€</span>
         </div>
         <div style={{ fontSize:11, color:tc.faint, marginTop:4 }}>
@@ -191,7 +191,7 @@ function KellyCalc({ bankroll, isDark = true }) {
         <label style={s.calcLabel}>Cote proposée par le bookie</label>
         <input type="number" step="0.05" inputMode="decimal" value={cote}
           onChange={e=>setCote(Math.max(1.01,+e.target.value))}
-          style={s.numInput} />
+          style={{ ...s.numInput, color:tc.text, background:isDark?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.9)", borderColor:isDark?"rgba(212,175,55,0.15)":"rgba(0,0,0,0.15)" }} />
       </div>
 
       {/* Confiance */}
@@ -374,7 +374,7 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
                 </button>
               ))}
               {/* Saisie manuelle */}
-              <input style={{ ...s.numInput, marginTop:4 }} placeholder="Ou entre un match manuellement..."
+              <input style={{ ...s.numInput, marginTop:4, color:tc.text, background:isDark?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.9)", borderColor:tc.border }} placeholder="Ou entre un match manuellement..."
                 value={matches.includes(selectedMatch) ? "" : selectedMatch}
                 onChange={e=>setSelectedMatch(e.target.value)} />
             </div>
@@ -384,12 +384,12 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
             <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
               <div style={s.calcField}>
                 <label style={{ ...s.calcLabel, color:tc.muted }}>Type de pari <span style={{ color:tc.faint, fontSize:11 }}>(optionnel)</span></label>
-                <input style={s.numInput} placeholder="Ex: 1, BTTS, Over 2.5, Victoire X..." value={typePari} onChange={e=>setTypePari(e.target.value)} />
+                <input style={{ ...s.numInput, color:tc.text, background:isDark?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.9)", borderColor:tc.border }} placeholder="Ex: 1, BTTS, Over 2.5, Victoire X..." value={typePari} onChange={e=>setTypePari(e.target.value)} />
               </div>
               <div style={s.calcField}>
                 <label style={{ ...s.calcLabel, color:tc.muted }}>3️⃣ Cote proposée par ton bookie</label>
                 <input type="number" step="0.05" inputMode="decimal" value={coteBookie}
-                  onChange={e=>setCoteBookie(e.target.value)} style={s.numInput} placeholder="Ex: 2.10" />
+                  onChange={e=>setCoteBookie(e.target.value)} style={{ ...s.numInput, color:tc.text, background:isDark?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.9)", borderColor:tc.border }} placeholder="Ex: 2.10" />
               </div>
               <button
                 style={{ background:"linear-gradient(135deg,#D4AF37,#8B7320)", border:"none", borderRadius:12,
@@ -474,8 +474,8 @@ function ComboCalc({ bankroll, isDark = true }) {
     <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
       {legs.map((leg,i) => (
         <div key={i} style={{ display:"flex", gap:8, alignItems:"center" }}>
-          <input style={{ ...s.numInput, flex:1 }} placeholder="Match" value={leg.match} onChange={e=>updateLeg(i,"match",e.target.value)} />
-          <input style={{ ...s.numInput, width:70 }} type="number" step="0.05" value={leg.cote} onChange={e=>updateLeg(i,"cote",e.target.value)} inputMode="decimal" />
+          <input style={{ ...s.numInput, flex:1, color:isDark?"rgba(255,255,255,0.85)":"rgba(20,16,8,0.85)", background:isDark?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.9)", borderColor:isDark?"rgba(212,175,55,0.15)":"rgba(0,0,0,0.15)" }} placeholder="Match" value={leg.match} onChange={e=>updateLeg(i,"match",e.target.value)} />
+          <input style={{ ...s.numInput, width:70, color:isDark?"rgba(255,255,255,0.85)":"rgba(20,16,8,0.85)", background:isDark?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.9)", borderColor:isDark?"rgba(212,175,55,0.15)":"rgba(0,0,0,0.15)" }} type="number" step="0.05" value={leg.cote} onChange={e=>updateLeg(i,"cote",e.target.value)} inputMode="decimal" />
           <button style={s.removeBtn} onClick={()=>removeLeg(i)}>✗</button>
         </div>
       ))}
@@ -1184,7 +1184,7 @@ const getS = (T) => ({
   numInput:{ background:T.bgInput, border:`1px solid ${T.borderInput}`, borderRadius:10, padding:"12px 14px", color:T.text, fontSize:16, fontFamily:"'DM Sans',sans-serif", width:"100%", WebkitAppearance:"none" },
   calcResult:{ display:"flex", flexDirection:"column", gap:10, marginTop:6 },
   calcRow:{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:13, color:T.textMuted },
-  addLegBtn:{ background:"transparent", border:"1px dashed rgba(212,175,55,0.2)", borderRadius:10, padding:"10px", color:"rgba(212,175,55,0.45)", fontSize:13, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", minHeight:44 },
+  addLegBtn:{ background:"transparent", border:"1px dashed rgba(212,175,55,0.3)", borderRadius:10, padding:"10px", color:"rgba(155,130,20,0.7)", fontSize:13, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", minHeight:44 },
   removeBtn:{ background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.18)", borderRadius:8, width:36, height:36, color:"#ef4444", cursor:"pointer", fontSize:14, flexShrink:0 },
   histHeader:{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:16 },
   addBtn:{ background:"linear-gradient(135deg,#D4AF37,#8B7320)", border:"none", borderRadius:10, padding:"8px 15px", color:"#080810", fontWeight:600, fontSize:13, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" },
