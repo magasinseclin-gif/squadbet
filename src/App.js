@@ -233,7 +233,7 @@ function KellyCalc({ bankroll }) {
 }
 
 // Value Bet IA : sélection sport → matchs du jour → cote bookie → analyse IA → cote juste
-function ValueBetCalc() {
+function ValueBetCalc({ isDark = true }) {
   const SPORTS_VB = [
     { id:"football",   label:"Football",   icon:"⚽" },
     { id:"tennis",     label:"Tennis",     icon:"🎾" },
@@ -335,9 +335,9 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
         <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
           {SPORTS_VB.map(sp=>(
             <button key={sp.id}
-              style={{ padding:"10px 14px", borderRadius:10, border:`1px solid ${sport===sp.id?"rgba(212,175,55,0.5)":"rgba(255,255,255,0.08)"}`,
+              style={{ padding:"10px 14px", borderRadius:10, border:`1px solid ${sport===sp.id?"rgba(212,175,55,0.5)":isDark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.12)"}`,
                 background:sport===sp.id?"rgba(212,175,55,0.15)":"transparent",
-                color:sport===sp.id?"#D4AF37":"rgba(255,255,255,0.4)",
+                color:sport===sp.id?(isDark?"#D4AF37":"#9A7A1A"):isDark?"rgba(255,255,255,0.4)":"rgba(20,16,8,0.55)",
                 fontSize:13, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", minHeight:44,
                 fontWeight:sport===sp.id?700:400 }}
               onClick={()=>fetchMatches(sp.id)}>
@@ -353,7 +353,7 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
           <div style={{ ...s.calcLabel }}>2️⃣ Sélectionne le match</div>
 
           {loadingMatches ? (
-            <div style={{ display:"flex", alignItems:"center", gap:10, color:"rgba(255,255,255,0.4)", fontSize:13 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10, color:isDark?"rgba(255,255,255,0.4)":"rgba(20,16,8,0.4)", fontSize:13 }}>
               <div style={{ display:"flex", gap:4 }}>
                 {[0,0.2,0.4].map((d,i)=><span key={i} style={{ width:6,height:6,borderRadius:"50%",background:"#D4AF37",display:"inline-block",animation:"pulse 1.2s infinite",animationDelay:`${d}s` }}/>)}
               </div>
@@ -363,9 +363,9 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
             <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
               {matches.map((m,i)=>(
                 <button key={i}
-                  style={{ padding:"11px 14px", borderRadius:10, border:`1px solid ${selectedMatch===m?"rgba(212,175,55,0.5)":"rgba(255,255,255,0.08)"}`,
-                    background:selectedMatch===m?"rgba(212,175,55,0.1)":"rgba(255,255,255,0.02)",
-                    color:selectedMatch===m?"#D4AF37":"rgba(255,255,255,0.7)",
+                  style={{ padding:"11px 14px", borderRadius:10, border:`1px solid ${selectedMatch===m?"rgba(212,175,55,0.5)":isDark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.1)"}`,
+                    background:selectedMatch===m?"rgba(212,175,55,0.1)":isDark?"rgba(255,255,255,0.02)":"rgba(0,0,0,0.03)",
+                    color:selectedMatch===m?(isDark?"#D4AF37":"#9A7A1A"):isDark?"rgba(255,255,255,0.7)":"rgba(20,16,8,0.75)",
                     fontSize:13, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", textAlign:"left", minHeight:44,
                     fontWeight:selectedMatch===m?600:400 }}
                   onClick={()=>setSelectedMatch(m)}>{m}
@@ -405,7 +405,7 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
       {step >= 3 && (
         <div style={{ borderTop:"1px solid rgba(212,175,55,0.1)", paddingTop:16 }}>
           {loadingAnalysis ? (
-            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:12, padding:"20px 0", color:"rgba(255,255,255,0.5)", fontSize:13 }}>
+            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:12, padding:"20px 0", color:isDark?"rgba(255,255,255,0.5)":"rgba(20,16,8,0.4)", fontSize:13 }}>
               <div style={{ display:"flex", gap:6 }}>
                 {[0,0.2,0.4].map((d,i)=><span key={i} style={{ width:8,height:8,borderRadius:"50%",background:"#D4AF37",display:"inline-block",animation:"pulse 1.2s infinite",animationDelay:`${d}s` }}/>)}
               </div>
@@ -446,7 +446,7 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
                   ⚠️ {analysis.risques}
                 </div>
               )}
-              <button onClick={reset} style={{ background:"transparent", border:"1px solid rgba(255,255,255,0.1)", borderRadius:10, padding:"10px", color:"rgba(255,255,255,0.4)", fontSize:13, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", minHeight:44 }}>
+              <button onClick={reset} style={{ background:"transparent", border:`1px solid ${isDark?"rgba(255,255,255,0.1)":"rgba(0,0,0,0.1)"}`, borderRadius:10, padding:"10px", color:isDark?"rgba(255,255,255,0.4)":"rgba(20,16,8,0.4)", fontSize:13, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", minHeight:44 }}>
                 ↩ Nouvelle analyse
               </button>
             </div>
@@ -972,7 +972,7 @@ export default function BettingAdvisor() {
             <div style={s.pageTitle}>📊 Calculateurs</div>
             <div style={s.pageSubtitle}>Outils pro pour optimiser tes mises</div>
             <div style={s.card}><div style={s.cardTitle}>🎯 Calcul Kelly</div><KellyCalc bankroll={bankroll} /></div>
-            <div style={s.card}><div style={s.cardTitle}>💎 Détecteur Value Bet</div><ValueBetCalc /></div>
+            <div style={s.card}><div style={s.cardTitle}>💎 Détecteur Value Bet</div><ValueBetCalc isDark={isDark} /></div>
             <div style={s.card}><div style={s.cardTitle}>🔗 Simulateur Combiné</div><ComboCalc bankroll={bankroll} /></div>
           </div>
         )}
