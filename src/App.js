@@ -76,6 +76,30 @@ function useIsMobile() {
   return isMobile;
 }
 
+// ─── HOOK : thème clair/sombre ────────────────────────────────────────────────
+function useTheme() {
+  const getSaved = () => { try { return localStorage.getItem("squadbet_theme"); } catch(e){ return null; } };
+  const systemDark = () => window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const [theme, setTheme] = useState(() => getSaved() || (systemDark() ? "dark" : "light"));
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = (e) => {
+      if (!getSaved()) setTheme(e.matches ? "dark" : "light");
+    };
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  const toggle = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    try { localStorage.setItem("squadbet_theme", next); } catch(e){}
+  };
+
+  return { theme, toggle, isDark: theme === "dark" };
+}
+
 
 // ─── SPORTS AVATAR SVG ───────────────────────────────────────────────────────
 function SportsAvatar({ size = 40 }) {
@@ -611,11 +635,56 @@ const ob = {
   levelGrid:{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 },
   levelBtn:{ display:"flex", flexDirection:"column", alignItems:"center", gap:5, padding:"14px 10px", background:"rgba(255,255,255,0.03)", border:"1px solid rgba(212,175,55,0.1)", borderRadius:14, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", transition:"all 0.2s", minHeight:90 },
   levelBtnOn:{ background:"rgba(212,175,55,0.12)", border:"1px solid rgba(212,175,55,0.4)", boxShadow:"0 0 16px rgba(212,175,55,0.1)" },
-  levelLabel:{ fontSize:13, fontWeight:600, color:"rgba(255,255,255,0.8)" },
+  levelLabel:{ fontSize:13, fontWeight:600, color:T.text },
   levelDesc:{ fontSize:10.5, color:"rgba(255,255,255,0.35)", textAlign:"center" },
   btn:{ background:"linear-gradient(135deg,#D4AF37,#8B7320)", border:"none", borderRadius:12, padding:"15px 20px", color:"#080810", fontWeight:700, fontSize:15, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", transition:"opacity 0.2s", minHeight:50 },
   btnBack:{ background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:12, padding:"15px 16px", color:"rgba(255,255,255,0.4)", fontWeight:500, fontSize:14, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", minHeight:50 },
   disclaimer:{ textAlign:"center", fontSize:10, color:"rgba(255,255,255,0.18)", marginTop:20, letterSpacing:"0.3px" },
+};
+
+// ─── THÈMES ───────────────────────────────────────────────────────────────────
+const THEME_DARK = {
+  bg:         "#080810",
+  bgCard:     "rgba(255,255,255,0.025)",
+  bgSidebar:  "rgba(8,8,16,0.99)",
+  bgInput:    "rgba(255,255,255,0.04)",
+  bgInputArea:"rgba(0,0,0,0.3)",
+  bgTopBar:   "rgba(8,8,16,0.98)",
+  bgBottomNav:"rgba(8,8,16,0.98)",
+  bgSugg:     "rgba(255,255,255,0.03)",
+  bgBubbleAI: "rgba(255,255,255,0.04)",
+  border:     "rgba(212,175,55,0.1)",
+  borderInput:"rgba(212,175,55,0.15)",
+  borderNav:  "rgba(212,175,55,0.12)",
+  text:       "rgba(255,255,255,0.85)",
+  textMuted:  "rgba(255,255,255,0.4)",
+  textFaint:  "rgba(255,255,255,0.25)",
+  gold:       "#D4AF37",
+  shadow:     "0 4px 24px rgba(0,0,0,0.4)",
+  gridLine:   "rgba(212,175,55,0.02)",
+  transition: "background 0.35s ease, color 0.35s ease, border-color 0.35s ease",
+};
+
+const THEME_LIGHT = {
+  bg:         "#F8F6F0",
+  bgCard:     "rgba(255,255,255,0.9)",
+  bgSidebar:  "rgba(255,253,245,0.99)",
+  bgInput:    "rgba(255,255,255,0.95)",
+  bgInputArea:"rgba(248,246,240,0.98)",
+  bgTopBar:   "rgba(255,253,245,0.98)",
+  bgBottomNav:"rgba(255,253,245,0.98)",
+  bgSugg:     "rgba(212,175,55,0.07)",
+  bgBubbleAI: "rgba(255,255,255,0.95)",
+  border:     "rgba(212,175,55,0.25)",
+  borderInput:"rgba(212,175,55,0.3)",
+  borderNav:  "rgba(212,175,55,0.2)",
+  text:       "rgba(20,16,8,0.85)",
+  textMuted:  "rgba(20,16,8,0.45)",
+  textFaint:  "rgba(20,16,8,0.28)",
+  gold:       "#9A7A1A",
+  shadow:     "0 4px 24px rgba(180,160,80,0.12)",
+  gridLine:   "rgba(212,175,55,0.06)",
+  transition: "background 0.35s ease, color 0.35s ease, border-color 0.35s ease",
 };
 
 // ─── MAIN APP ────────────────────────────────────────────────────────────────
@@ -623,6 +692,8 @@ export default function BettingAdvisor() {
   const getSavedProfile = () => { try { const p=localStorage.getItem("squadbet_profile"); return p?JSON.parse(p):null; } catch(e){return null;} };
   const [profile, setProfile] = useState(getSavedProfile);
   const isMobile = useIsMobile();
+  const { theme, toggle: toggleTheme, isDark } = useTheme();
+  const T = isDark ? THEME_DARK : THEME_LIGHT;
 
   const [view, setView] = useState("chat");
   const [sport, setSport] = useState("all");
@@ -734,7 +805,7 @@ export default function BettingAdvisor() {
   const SIDEBAR_W = isMobile ? 0 : 230;
 
   return (
-    <div style={{ height:"100dvh", width:"100vw", background:"#080810", display:"flex", flexDirection:"column", fontFamily:"'DM Sans',sans-serif", position:"relative", overflow:"hidden" }}>
+    <div style={{ height:"100dvh", width:"100vw", background:T.bg, display:"flex", flexDirection:"column", fontFamily:"'DM Sans',sans-serif", position:"relative", overflow:"hidden", transition:T.transition }}>
       <div style={s.bgGrid} />
 
       {/* ── DESKTOP SIDEBAR ── */}
@@ -778,9 +849,14 @@ export default function BettingAdvisor() {
             </nav>
           </div>
           <div style={s.sideBot}>
-            <div style={s.warnBox}>
+            {/* Bouton thème */}
+            <button onClick={toggleTheme} style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"space-between", background:`rgba(212,175,55,${isDark?0.06:0.1})`, border:`1px solid ${T.border}`, borderRadius:9, padding:"10px 12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", marginBottom:10, transition:T.transition }}>
+              <span style={{ fontSize:12, color:T.textMuted }}>Thème</span>
+              <span style={{ fontSize:18 }}>{isDark ? "☀️" : "🌙"}</span>
+            </button>
+            <div style={{ ...s.warnBox, background:`rgba(239,68,68,${isDark?0.05:0.04})`, border:`1px solid rgba(239,68,68,${isDark?0.15:0.2})` }}>
               <div style={s.warnTitle}>⚠️ Jeu Responsable</div>
-              <div style={s.warnText}>Ne misez que ce que vous pouvez vous permettre de perdre. Interdit aux mineurs.</div>
+              <div style={{ ...s.warnText, color:T.textFaint }}>Ne misez que ce que vous pouvez vous permettre de perdre. Interdit aux mineurs.</div>
             </div>
           </div>
         </aside>
@@ -796,7 +872,12 @@ export default function BettingAdvisor() {
               <div style={m.topBarSub}>👤 {profile.pseudo} · {bankroll.toFixed(0)}€</div>
             </div>
           </div>
-          <button style={m.topBarReset} onClick={()=>{ try{localStorage.removeItem("squadbet_profile")}catch(e){} setProfile(null); setMessages([]); }}>✕</button>
+          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+            <button onClick={toggleTheme} style={{ background:`rgba(212,175,55,${isDark?0.08:0.12})`, border:`1px solid ${T.border}`, borderRadius:8, width:36, height:36, cursor:"pointer", fontSize:16, display:"flex", alignItems:"center", justifyContent:"center", WebkitTapHighlightColor:"transparent" }}>
+              {isDark ? "☀️" : "🌙"}
+            </button>
+            <button style={{ ...m.topBarReset, color:T.textMuted, background:`rgba(212,175,55,${isDark?0.05:0.08})`, border:`1px solid ${T.border}` }} onClick={()=>{ try{localStorage.removeItem("squadbet_profile")}catch(e){} setProfile(null); setMessages([]); }}>✕</button>
+          </div>
         </div>
       )}
 
@@ -1025,7 +1106,7 @@ export default function BettingAdvisor() {
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
         html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
-        body{background:#080810;overscroll-behavior:none;-webkit-font-smoothing:antialiased;position:fixed;width:100%;height:100%}
+        body{background:${T.bg};overscroll-behavior:none;-webkit-font-smoothing:antialiased;position:fixed;width:100%;height:100%;transition:background 0.35s ease}
         html{height:100%;height:-webkit-fill-available}
         ::-webkit-scrollbar{width:3px;height:3px}
         ::-webkit-scrollbar-thumb{background:rgba(212,175,55,0.2);border-radius:4px}
@@ -1045,13 +1126,13 @@ export default function BettingAdvisor() {
 
 // ─── DESKTOP STYLES ───────────────────────────────────────────────────────────
 const s = {
-  bgGrid:{ position:"fixed", inset:0, backgroundImage:"linear-gradient(rgba(212,175,55,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(212,175,55,0.02) 1px,transparent 1px)", backgroundSize:"48px 48px", pointerEvents:"none", zIndex:0 },
-  sidebar:{ width:230, background:"rgba(8,8,16,0.99)", borderRight:"1px solid rgba(212,175,55,0.1)", display:"flex", flexDirection:"column", justifyContent:"space-between" },
+  bgGrid:{ position:"fixed", inset:0, backgroundImage:`linear-gradient(${T.gridLine} 1px,transparent 1px),linear-gradient(90deg,${T.gridLine} 1px,transparent 1px)`, backgroundSize:"48px 48px", pointerEvents:"none", zIndex:0 },
+  sidebar:{ width:230, background:T.bgSidebar, borderRight:`1px solid ${T.border}`, display:"flex", flexDirection:"column", justifyContent:"space-between", transition:T.transition },
   sideTop:{ padding:"18px 14px", display:"flex", flexDirection:"column", gap:18 },
   logo:{ display:"flex", alignItems:"center", gap:11, paddingBottom:14, borderBottom:"1px solid rgba(212,175,55,0.08)" },
   logoName:{ fontFamily:"'Playfair Display',serif", fontSize:14, color:"#D4AF37" },
   logoSub:{ fontSize:9.5, color:"rgba(255,255,255,0.3)", marginTop:2 },
-  profilePill:{ display:"flex", alignItems:"center", justifyContent:"space-between", background:"rgba(212,175,55,0.07)", border:"1px solid rgba(212,175,55,0.15)", borderRadius:9, padding:"9px 12px" },
+  profilePill:{ display:"flex", alignItems:"center", justifyContent:"space-between", background:`rgba(212,175,55,${isDark?0.07:0.1})`, border:`1px solid ${T.border}`, borderRadius:9, padding:"9px 12px" },
   profileInfo:{ display:"flex", flexDirection:"column", gap:3 },
   profilePseudo:{ fontSize:13, fontWeight:600, color:"rgba(255,255,255,0.8)" },
   profileNiveau:{ fontSize:10.5, color:"rgba(212,175,55,0.7)" },
@@ -1064,43 +1145,43 @@ const s = {
   bankSave:{ background:"#D4AF37", border:"none", borderRadius:6, padding:"4px 10px", color:"#080810", cursor:"pointer", fontWeight:700 },
   bankMeta:{ fontSize:11, color:"rgba(255,255,255,0.3)", marginTop:5 },
   nav:{ display:"flex", flexDirection:"column", gap:3 },
-  navBtn:{ display:"flex", alignItems:"center", gap:9, padding:"9px 11px", borderRadius:7, border:"none", background:"transparent", color:"rgba(255,255,255,0.4)", fontSize:13, cursor:"pointer", textAlign:"left", fontFamily:"'DM Sans',sans-serif" },
+  navBtn:{ display:"flex", alignItems:"center", gap:9, padding:"9px 11px", borderRadius:7, border:"none", background:"transparent", color:T.textMuted, fontSize:13, cursor:"pointer", textAlign:"left", fontFamily:"'DM Sans',sans-serif" },
   navBtnOn:{ background:"rgba(212,175,55,0.1)", color:"#D4AF37", border:"1px solid rgba(212,175,55,0.18)" },
   sideBot:{ padding:14 },
   warnBox:{ background:"rgba(239,68,68,0.05)", border:"1px solid rgba(239,68,68,0.15)", borderRadius:8, padding:"9px 11px" },
   warnTitle:{ fontSize:10.5, fontWeight:600, color:"#fca5a5", marginBottom:4 },
   warnText:{ fontSize:9.5, color:"rgba(255,255,255,0.25)", lineHeight:1.55 },
-  topBar:{ display:"flex", alignItems:"center", gap:6, padding:"8px 12px", borderBottom:"1px solid rgba(212,175,55,0.07)", flexShrink:0 },
-  sportBtn:{ padding:"5px 11px", borderRadius:18, border:"1px solid rgba(255,255,255,0.08)", background:"transparent", color:"rgba(255,255,255,0.35)", fontSize:12, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" },
+  topBar:{ display:"flex", alignItems:"center", gap:6, padding:"8px 12px", borderBottom:`1px solid ${T.border}`, flexShrink:0, background:T.bgTopBar },
+  sportBtn:{ padding:"5px 11px", borderRadius:18, border:`1px solid ${T.border}`, background:"transparent", color:T.textMuted, fontSize:12, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" },
   sportBtnOn:{ background:"rgba(212,175,55,0.12)", border:"1px solid rgba(212,175,55,0.3)", color:"#D4AF37" },
   clearBtn:{ padding:"5px 10px", borderRadius:18, border:"1px solid rgba(255,255,255,0.07)", background:"transparent", color:"rgba(255,255,255,0.25)", fontSize:11, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" },
   msgRow:{ display:"flex", alignItems:"flex-end", gap:9, animation:"fadeUp 0.3s ease" },
-  aiBubble:{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(212,175,55,0.1)", borderRadius:"14px 14px 14px 3px", padding:"12px 15px", color:"rgba(255,255,255,0.82)", fontSize:13.5, lineHeight:1.75, maxWidth:"80%", wordBreak:"break-word" },
+  aiBubble:{ background:T.bgBubbleAI, border:`1px solid ${T.border}`, borderRadius:"14px 14px 14px 3px", padding:"12px 15px", color:T.text, fontSize:13.5, lineHeight:1.75, maxWidth:"80%", wordBreak:"break-word", transition:T.transition },
   userBubble:{ background:"linear-gradient(135deg,rgba(212,175,55,0.17),rgba(139,115,32,0.1))", border:"1px solid rgba(212,175,55,0.2)", borderRadius:"14px 14px 3px 14px", padding:"11px 14px", color:"rgba(255,255,255,0.9)", fontSize:13.5, lineHeight:1.65, maxWidth:"70%", wordBreak:"break-word" },
   tdot:{ display:"inline-block", width:7, height:7, borderRadius:"50%", background:"#D4AF37", animation:"pulse 1.2s infinite" },
   suggLabel:{ fontSize:10, color:"rgba(255,255,255,0.2)", letterSpacing:"1px", textTransform:"uppercase", marginBottom:7 },
   suggBtn:{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(212,175,55,0.13)", borderRadius:20, padding:"5px 12px", color:"rgba(255,255,255,0.45)", fontSize:12, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", whiteSpace:"nowrap" },
-  inputArea:{ display:"flex", alignItems:"flex-end", gap:9, borderTop:"1px solid rgba(212,175,55,0.07)", background:"rgba(0,0,0,0.3)", flexShrink:0 },
-  textarea:{ flex:1, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(212,175,55,0.15)", borderRadius:12, padding:"10px 14px", color:"rgba(255,255,255,0.9)", fontSize:16, fontFamily:"'DM Sans',sans-serif", resize:"none", lineHeight:1.5, overflowY:"auto", WebkitAppearance:"none" },
+  inputArea:{ display:"flex", alignItems:"flex-end", gap:9, borderTop:`1px solid ${T.border}`, background:T.bgInputArea, flexShrink:0 },
+  textarea:{ flex:1, background:T.bgInput, border:`1px solid ${T.borderInput}`, borderRadius:12, padding:"10px 14px", color:T.text, fontSize:16, fontFamily:"'DM Sans',sans-serif", resize:"none", lineHeight:1.5, overflowY:"auto", WebkitAppearance:"none" },
   sendBtn:{ borderRadius:12, background:"linear-gradient(135deg,#D4AF37,#8B7320)", border:"none", cursor:"pointer", color:"#080810", fontWeight:"bold", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 },
   pageView:{ flex:1, overflowY:"auto", padding:"20px 16px", WebkitOverflowScrolling:"touch" },
-  pageTitle:{ fontFamily:"'Playfair Display',serif", fontSize:20, color:"#D4AF37", marginBottom:4 },
-  pageSubtitle:{ fontSize:12.5, color:"rgba(255,255,255,0.3)", marginBottom:18 },
-  card:{ background:"rgba(255,255,255,0.025)", border:"1px solid rgba(212,175,55,0.1)", borderRadius:14, padding:"16px", marginBottom:14 },
-  cardTitle:{ fontSize:13.5, fontWeight:600, color:"rgba(255,255,255,0.65)", marginBottom:14 },
+  pageTitle:{ fontFamily:"'Playfair Display',serif", fontSize:20, color:T.gold, marginBottom:4 },
+  pageSubtitle:{ fontSize:12.5, color:T.textFaint, marginBottom:18 },
+  card:{ background:T.bgCard, border:`1px solid ${T.border}`, borderRadius:14, padding:"16px", marginBottom:14, transition:T.transition },
+  cardTitle:{ fontSize:13.5, fontWeight:600, color:T.textMuted, marginBottom:14 },
   calcField:{ display:"flex", flexDirection:"column", gap:8 },
-  calcLabel:{ fontSize:13, color:"rgba(255,255,255,0.45)" },
+  calcLabel:{ fontSize:13, color:T.textMuted },
   slider:{ width:"100%", accentColor:"#D4AF37", cursor:"pointer", height:6 },
-  numInput:{ background:"rgba(255,255,255,0.05)", border:"1px solid rgba(212,175,55,0.18)", borderRadius:10, padding:"12px 14px", color:"rgba(255,255,255,0.85)", fontSize:16, fontFamily:"'DM Sans',sans-serif", width:"100%", WebkitAppearance:"none" },
+  numInput:{ background:T.bgInput, border:`1px solid ${T.borderInput}`, borderRadius:10, padding:"12px 14px", color:T.text, fontSize:16, fontFamily:"'DM Sans',sans-serif", width:"100%", WebkitAppearance:"none" },
   calcResult:{ display:"flex", flexDirection:"column", gap:10, marginTop:6 },
-  calcRow:{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:13, color:"rgba(255,255,255,0.55)" },
+  calcRow:{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:13, color:T.textMuted },
   addLegBtn:{ background:"transparent", border:"1px dashed rgba(212,175,55,0.2)", borderRadius:10, padding:"10px", color:"rgba(212,175,55,0.45)", fontSize:13, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", minHeight:44 },
   removeBtn:{ background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.18)", borderRadius:8, width:36, height:36, color:"#ef4444", cursor:"pointer", fontSize:14, flexShrink:0 },
   histHeader:{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:16 },
   addBtn:{ background:"linear-gradient(135deg,#D4AF37,#8B7320)", border:"none", borderRadius:10, padding:"8px 15px", color:"#080810", fontWeight:600, fontSize:13, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" },
-  formInput:{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(212,175,55,0.13)", borderRadius:10, padding:"12px 14px", color:"rgba(255,255,255,0.85)", fontSize:16, fontFamily:"'DM Sans',sans-serif", width:"100%", WebkitAppearance:"none" },
-  betRow:{ display:"flex", justifyContent:"space-between", alignItems:"center", background:"rgba(255,255,255,0.025)", border:"1px solid rgba(212,175,55,0.07)", borderRadius:12, padding:"14px", animation:"fadeUp 0.2s ease" },
-  betMatch:{ fontSize:13.5, color:"rgba(255,255,255,0.82)", fontWeight:500, marginBottom:4 },
+  formInput:{ background:T.bgInput, border:`1px solid ${T.border}`, borderRadius:10, padding:"12px 14px", color:T.text, fontSize:16, fontFamily:"'DM Sans',sans-serif", width:"100%", WebkitAppearance:"none" },
+  betRow:{ display:"flex", justifyContent:"space-between", alignItems:"center", background:T.bgCard, border:`1px solid ${T.border}`, borderRadius:12, padding:"14px", animation:"fadeUp 0.2s ease" },
+  betMatch:{ fontSize:13.5, color:T.text, fontWeight:500, marginBottom:4 },
   betMeta:{ display:"flex", gap:7, fontSize:11, color:"rgba(255,255,255,0.28)", alignItems:"center", flexWrap:"wrap" },
   betRight:{ display:"flex", gap:10, alignItems:"center" },
   betCote:{ fontSize:12.5, color:"#a78bfa", fontWeight:600 },
@@ -1108,16 +1189,16 @@ const s = {
   winBtn:{ background:"rgba(34,197,94,0.12)", border:"1px solid rgba(34,197,94,0.25)", borderRadius:8, width:36, height:36, color:"#22c55e", cursor:"pointer", fontWeight:700, fontSize:16 },
   loseBtn:{ background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.22)", borderRadius:8, width:36, height:36, color:"#ef4444", cursor:"pointer", fontWeight:700, fontSize:16 },
   statsGrid:{ display:"grid", gap:10, marginBottom:14 },
-  statCard:{ background:"rgba(255,255,255,0.025)", border:"1px solid rgba(212,175,55,0.09)", borderRadius:12, padding:"16px 12px", display:"flex", flexDirection:"column", alignItems:"center", gap:5, textAlign:"center" },
+  statCard:{ background:T.bgCard, border:`1px solid ${T.border}`, borderRadius:12, padding:"16px 12px", display:"flex", flexDirection:"column", alignItems:"center", gap:5, textAlign:"center" },
 };
 
 // ─── MOBILE-ONLY STYLES ───────────────────────────────────────────────────────
 const m = {
-  topBar:{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 16px", paddingTop:"calc(10px + env(safe-area-inset-top, 0px))", background:"rgba(8,8,16,0.98)", borderBottom:"1px solid rgba(212,175,55,0.1)", flexShrink:0, zIndex:5 },
+  topBar:{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 16px", paddingTop:"calc(10px + env(safe-area-inset-top, 0px))", background:T.bgTopBar, borderBottom:`1px solid ${T.border}`, flexShrink:0, zIndex:5, transition:T.transition },
   topBarName:{ fontFamily:"'Playfair Display',serif", fontSize:15, color:"#D4AF37" },
   topBarSub:{ fontSize:11, color:"rgba(255,255,255,0.35)", marginTop:1 },
   topBarReset:{ background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:8, width:36, height:36, color:"rgba(255,255,255,0.35)", cursor:"pointer", fontSize:12, display:"flex", alignItems:"center", justifyContent:"center" },
-  bottomNav:{ display:"flex", alignItems:"stretch", background:"rgba(8,8,16,0.98)", borderTop:"1px solid rgba(212,175,55,0.12)", paddingBottom:"env(safe-area-inset-bottom, 0px)", flexShrink:0, zIndex:10 },
-  navBtn:{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2, padding:"10px 4px", border:"none", background:"transparent", color:"rgba(255,255,255,0.35)", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", minHeight:56, WebkitTapHighlightColor:"transparent" },
+  bottomNav:{ display:"flex", alignItems:"stretch", background:T.bgBottomNav, borderTop:`1px solid ${T.borderNav}`, paddingBottom:"env(safe-area-inset-bottom, 0px)", flexShrink:0, zIndex:10, transition:T.transition },
+  navBtn:{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2, padding:"10px 4px", border:"none", background:"transparent", color:T.textMuted, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", minHeight:56, WebkitTapHighlightColor:"transparent" },
   navBtnOn:{ color:"#D4AF37" },
 };
