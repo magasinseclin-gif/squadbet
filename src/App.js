@@ -1139,7 +1139,7 @@ const getS = (T) => ({
   logo:{ display:"flex", alignItems:"center", gap:11, paddingBottom:14, borderBottom:"1px solid rgba(212,175,55,0.08)" },
   logoName:{ fontFamily:"'Playfair Display',serif", fontSize:14, color:"#D4AF37" },
   logoSub:{ fontSize:9.5, color:"rgba(255,255,255,0.3)", marginTop:2 },
-  profilePill:{ display:"flex", alignItems:"center", justifyContent:"space-between", background:`rgba(212,175,55,${isDark?0.07:0.1})`, border:`1px solid ${T.border}`, borderRadius:9, padding:"9px 12px" },
+  profilePill:{ display:"flex", alignItems:"center", justifyContent:"space-between", background:"rgba(212,175,55,0.09)", border:`1px solid ${T.border}`, borderRadius:9, padding:"9px 12px" },
   profileInfo:{ display:"flex", flexDirection:"column", gap:3 },
   profilePseudo:{ fontSize:13, fontWeight:600, color:"rgba(255,255,255,0.8)" },
   profileNiveau:{ fontSize:10.5, color:"rgba(212,175,55,0.7)" },
@@ -1209,3 +1209,7 @@ const getM = (T) => ({
   navBtn:{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2, padding:"10px 4px", border:"none", background:"transparent", color:T.textMuted, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", minHeight:56, WebkitTapHighlightColor:"transparent" },
   navBtnOn:{ color:"#D4AF37" },
 });
+// Static fallback for sub-components (always dark)
+const s = getS(THEME_DARK);
+const m = getM(THEME_DARK);
+
