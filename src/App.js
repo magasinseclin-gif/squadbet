@@ -463,7 +463,6 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
 
 
 function ComboCalc({ bankroll, isDark = true }) {
-  const tc = isDark ? { text:"rgba(255,255,255,0.8)", muted:"rgba(255,255,255,0.5)", faint:"rgba(255,255,255,0.3)", border:"rgba(255,255,255,0.08)", gold:"#D4AF37" } : { text:"rgba(20,16,8,0.85)", muted:"rgba(20,16,8,0.55)", faint:"rgba(20,16,8,0.35)", border:"rgba(0,0,0,0.1)", gold:"#9A7A1A" };
   const [legs, setLegs] = useState([{ match:"PSG vs Lyon", cote:1.65 }, { match:"Real vs Barça", cote:2.10 }]);
   const [mise, setMise] = useState(20);
   const totalCote = legs.reduce((a,l)=>a*l.cote,1);
