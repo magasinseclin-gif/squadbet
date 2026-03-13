@@ -692,6 +692,28 @@ const THEME_LIGHT = {
 // ─── MAIN APP ────────────────────────────────────────────────────────────────
 export default function BettingAdvisor() {
   const getSavedProfile = () => { try { const p=localStorage.getItem("squadbet_profile"); return p?JSON.parse(p):null; } catch(e){return null;} };
+
+  const fetchDynamicSuggestions = async (sportId) => {
+    setLoadingSugg(true);
+    try {
+      const today = new Date().toLocaleDateString("fr-FR", { weekday:"long", day:"numeric", month:"long" });
+      const sportLabel = sportId === "all" ? "football, tennis, basketball" : sportId;
+      const prompt = `Liste 4 suggestions courtes de paris pour aujourd'hui (${today}) en ${sportLabel}. Format : des phrases courtes de max 6 mots comme "Analyse PSG vs Lyon ce soir". Réponds UNIQUEMENT en JSON : {"suggestions":["...","...","...","..."]}`;
+      const res = await fetch("/api/chat", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ model:"gemini-1.5-flash", max_tokens:200, messages:[{role:"user",content:prompt}] }),
+      });
+      const data = await res.json();
+      const txt = data.content?.find(b=>b.type==="text")?.text || "";
+      const jsonMatch = txt.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.suggestions?.length) setDynamicSugg(parsed.suggestions);
+      }
+    } catch(e) { /* fallback to static */ }
+    finally { setLoadingSugg(false); }
+  };
   const [profile, setProfile] = useState(getSavedProfile);
   const isMobile = useIsMobile();
   const { toggle: toggleTheme, isDark } = useTheme();
@@ -706,6 +728,8 @@ export default function BettingAdvisor() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [showSugg, setShowSugg] = useState(true);
+  const [dynamicSugg, setDynamicSugg] = useState([]);
+  const [loadingSugg, setLoadingSugg] = useState(false);
   const [bankroll, setBankroll] = useState(profile?.bankroll||200);
   const [bankrollInput, setBankrollInput] = useState(String(profile?.bankroll||200));
   const [editingBR, setEditingBR] = useState(false);
@@ -725,6 +749,11 @@ export default function BettingAdvisor() {
   useEffect(() => {
     if (profile && messages.length === 0) setMessages([getInitialMsg(profile)]);
   }, [profile, getInitialMsg, messages.length]);
+
+  useEffect(() => {
+    if (profile) fetchDynamicSuggestions(sport);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sport, profile]);
 
   useEffect(() => {
     if (bottomRef.current && view === "chat") {
@@ -929,7 +958,12 @@ export default function BettingAdvisor() {
               <div style={{ padding: isMobile?"0 12px 8px":"0 18px 10px", flexShrink:0 }}>
                 <div style={s.suggLabel}>Suggestions rapides</div>
                 <div style={{ display:"flex", gap:6, overflowX:"auto", WebkitOverflowScrolling:"touch", scrollbarWidth:"none", paddingBottom:4 }}>
-                  {(QUICK_PROMPTS[sport]||QUICK_PROMPTS.all).map((q,i)=>(
+                  {loadingSugg ? (
+                    <div style={{ fontSize:11, color:T.textFaint, padding:"8px 4px", display:"flex", alignItems:"center", gap:6 }}>
+                      <span style={{ display:"inline-block", width:6, height:6, borderRadius:"50%", background:T.gold, animation:"pulse 1.2s infinite" }}/>
+                      Matchs du jour...
+                    </div>
+                  ) : (dynamicSugg.length ? dynamicSugg : (QUICK_PROMPTS[sport]||QUICK_PROMPTS.all)).map((q,i)=>(
                     <button key={i} style={{ ...s.suggBtn, flexShrink:0, minHeight:isMobile?40:32, padding: isMobile?"8px 14px":"5px 12px", fontSize: isMobile?13:11.5 }} onClick={()=>sendMessage(q)}>{q}</button>
                   ))}
                 </div>
@@ -1168,8 +1202,8 @@ const getS = (T) => ({
   aiBubble:{ background:T.bgBubbleAI, border:`1px solid ${T.border}`, borderRadius:"14px 14px 14px 3px", padding:"12px 15px", color:T.text, fontSize:13.5, lineHeight:1.75, maxWidth:"80%", wordBreak:"break-word", transition:T.transition },
   userBubble:{ background:"linear-gradient(135deg,rgba(212,175,55,0.17),rgba(139,115,32,0.1))", border:"1px solid rgba(212,175,55,0.2)", borderRadius:"14px 14px 3px 14px", padding:"11px 14px", color:"rgba(255,255,255,0.9)", fontSize:13.5, lineHeight:1.65, maxWidth:"70%", wordBreak:"break-word" },
   tdot:{ display:"inline-block", width:7, height:7, borderRadius:"50%", background:"#D4AF37", animation:"pulse 1.2s infinite" },
-  suggLabel:{ fontSize:10, color:"rgba(255,255,255,0.2)", letterSpacing:"1px", textTransform:"uppercase", marginBottom:7 },
-  suggBtn:{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(212,175,55,0.13)", borderRadius:20, padding:"5px 12px", color:"rgba(255,255,255,0.45)", fontSize:12, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", whiteSpace:"nowrap" },
+  suggLabel:{ fontSize:10, color:T.textMuted, letterSpacing:"1px", textTransform:"uppercase", marginBottom:7 },
+  suggBtn:{ background:T.bgSugg, border:`1px solid ${T.border}`, borderRadius:20, padding:"5px 12px", color:T.textMuted, fontSize:12, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", whiteSpace:"nowrap" },
   inputArea:{ display:"flex", alignItems:"flex-end", gap:9, borderTop:`1px solid ${T.border}`, background:T.bgInputArea, flexShrink:0 },
   textarea:{ flex:1, background:T.bgInput, border:`1px solid ${T.borderInput}`, borderRadius:12, padding:"10px 14px", color:T.text, fontSize:16, fontFamily:"'DM Sans',sans-serif", resize:"none", lineHeight:1.5, overflowY:"auto", WebkitAppearance:"none" },
   sendBtn:{ borderRadius:12, background:"linear-gradient(135deg,#D4AF37,#8B7320)", border:"none", cursor:"pointer", color:"#080810", fontWeight:"bold", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 },
