@@ -1051,12 +1051,12 @@ export default function BettingAdvisor() {
                 { label:"Gains nets", value:`${totalGains>=0?"+":""}${totalGains.toFixed(2)}€`, color:totalGains>=0?"#22c55e":"#ef4444", icon:"📊" },
                 { label:"Cote moyenne", value:avgCote, color:"#a78bfa", icon:"📐" },
                 { label:"Paris gagnés", value:`${wins.length}/${bets.length}`, color:"#22c55e", icon:"✅" },
-                { label:"Total misé", value:`${totalMises}€`, color:"rgba(255,255,255,0.6)", icon:"🏦" },
+                { label:"Total misé", value:`${totalMises}€`, color:T.textMuted, icon:"🏦" },
               ].map((stat,i)=>(
                 <div key={i} style={{ ...s.statCard, padding: isMobile?"14px 10px":"16px 12px" }}>
                   <div style={{ fontSize: isMobile?26:24 }}>{stat.icon}</div>
                   <div style={{ fontSize: isMobile?20:22, fontWeight:700, color:stat.color, fontFamily:"'Playfair Display',serif" }}>{stat.value}</div>
-                  <div style={{ fontSize: isMobile?10:11, color:"rgba(255,255,255,0.35)", letterSpacing:"0.3px", textAlign:"center" }}>{stat.label}</div>
+                  <div style={{ fontSize: isMobile?10:11, color:T.textFaint, letterSpacing:"0.3px", textAlign:"center" }}>{stat.label}</div>
                 </div>
               ))}
             </div>
@@ -1070,19 +1070,19 @@ export default function BettingAdvisor() {
                   const pct=((won/sb.length)*100).toFixed(0);
                   return (
                     <div key={sp.id} style={{ display:"flex", alignItems:"center", gap:10 }}>
-                      <div style={{ width:isMobile?80:110, fontSize:12, color:"rgba(255,255,255,0.6)", flexShrink:0 }}>{sp.icon} {sp.label}</div>
-                      <div style={{ flex:1, height:isMobile?8:6, background:"rgba(255,255,255,0.06)", borderRadius:4, overflow:"hidden" }}>
+                      <div style={{ width:isMobile?80:110, fontSize:12, color:T.textMuted, flexShrink:0 }}>{sp.icon} {sp.label}</div>
+                      <div style={{ flex:1, height:isMobile?8:6, background:isDark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.08)", borderRadius:4, overflow:"hidden" }}>
                         <div style={{ width:`${pct}%`, height:"100%", background:"linear-gradient(90deg,#D4AF37,#8B7320)", borderRadius:4, transition:"width 0.6s ease" }} />
                       </div>
-                      <div style={{ width:80, fontSize:11, color:"rgba(255,255,255,0.4)", textAlign:"right", flexShrink:0 }}>{pct}% ({won}/{sb.length})</div>
+                      <div style={{ width:80, fontSize:11, color:T.textMuted, textAlign:"right", flexShrink:0 }}>{pct}% ({won}/{sb.length})</div>
                     </div>
                   );
                 })}
               </div>
             </div>
-            <div style={{ ...s.card, borderColor:"rgba(212,175,55,0.3)", background:"rgba(212,175,55,0.05)" }}>
+            <div style={{ ...s.card, borderColor:"rgba(212,175,55,0.3)", background:isDark?"rgba(212,175,55,0.05)":"rgba(212,175,55,0.07)" }}>
               <div style={s.cardTitle}>💡 Conseil SquadBet</div>
-              <div style={{ color:"rgba(255,255,255,0.65)", fontSize:isMobile?14:13, lineHeight:1.75 }}>
+              <div style={{ color:T.text, fontSize:isMobile?14:13, lineHeight:1.75 }}>
                 {parseFloat(roi)>5
                   ?"✅ Excellent ROI ! Tu es au-dessus de la moyenne des parieurs professionnels. Continue à être rigoureux."
                   :parseFloat(roi)>0
