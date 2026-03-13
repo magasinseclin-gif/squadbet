@@ -30,14 +30,12 @@ export default async function handler(req, res) {
       },
     };
 
-    // Noms exacts selon la doc officielle Gemini API 2025
+    // Modèles confirmés disponibles sur cette clé
     const MODELS = [
-      "gemini-1.5-flash-8b",
-      "gemini-1.5-flash-8b-001",
-      "gemini-1.5-flash-002",
-      "gemini-1.5-flash-001",
-      "gemini-1.0-pro",
-      "gemini-1.0-pro-001",
+      "gemini-2.0-flash-lite",
+      "gemini-2.0-flash",
+      "gemini-flash-lite-latest",
+      "gemini-flash-latest",
     ];
 
     let lastError = null;
