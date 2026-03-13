@@ -692,7 +692,7 @@ export default function BettingAdvisor() {
   const getSavedProfile = () => { try { const p=localStorage.getItem("squadbet_profile"); return p?JSON.parse(p):null; } catch(e){return null;} };
   const [profile, setProfile] = useState(getSavedProfile);
   const isMobile = useIsMobile();
-  const { theme, toggle: toggleTheme, isDark } = useTheme();
+  const { toggle: toggleTheme, isDark } = useTheme();
   const T = isDark ? THEME_DARK : THEME_LIGHT;
   const s = getS(T);
   const m = getM(T);
@@ -1211,5 +1211,4 @@ const getM = (T) => ({
 });
 // Static fallback for sub-components (always dark)
 const s = getS(THEME_DARK);
-const m = getM(THEME_DARK);
 
