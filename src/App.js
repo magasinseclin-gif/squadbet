@@ -858,7 +858,7 @@ export default function BettingAdvisor() {
               <span style={{ fontSize:12, color:T.textMuted }}>Thème</span>
               <span style={{ fontSize:18 }}>{isDark ? "☀️" : "🌙"}</span>
             </button>
-            <div style={{ ...s.warnBox, background:`rgba(239,68,68,${isDark?0.05:0.04})`, border:`1px solid rgba(239,68,68,${isDark?0.15:0.2})` }}>
+            <div style={{ ...s.warnBox, background:isDark?"rgba(239,68,68,0.05)":"rgba(239,68,68,0.08)", border:`1px solid rgba(239,68,68,${isDark?0.2:0.35})` }}>
               <div style={s.warnTitle}>⚠️ Jeu Responsable</div>
               <div style={{ ...s.warnText, color:T.textFaint }}>Ne misez que ce que vous pouvez vous permettre de perdre. Interdit aux mineurs.</div>
             </div>
@@ -1140,26 +1140,26 @@ const getS = (T) => ({
   sideTop:{ padding:"18px 14px", display:"flex", flexDirection:"column", gap:18 },
   logo:{ display:"flex", alignItems:"center", gap:11, paddingBottom:14, borderBottom:"1px solid rgba(212,175,55,0.08)" },
   logoName:{ fontFamily:"'Playfair Display',serif", fontSize:14, color:"#D4AF37" },
-  logoSub:{ fontSize:9.5, color:"rgba(255,255,255,0.3)", marginTop:2 },
+  logoSub:{ fontSize:9.5, color:T.textMuted, marginTop:2 },
   profilePill:{ display:"flex", alignItems:"center", justifyContent:"space-between", background:"rgba(212,175,55,0.09)", border:`1px solid ${T.border}`, borderRadius:9, padding:"9px 12px" },
   profileInfo:{ display:"flex", flexDirection:"column", gap:3 },
-  profilePseudo:{ fontSize:13, fontWeight:600, color:"rgba(255,255,255,0.8)" },
-  profileNiveau:{ fontSize:10.5, color:"rgba(212,175,55,0.7)" },
+  profilePseudo:{ fontSize:13, fontWeight:700, color:T.text },
+  profileNiveau:{ fontSize:10.5, fontWeight:500, color:T.gold },
   profileReset:{ background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:5, width:22, height:22, color:"rgba(255,255,255,0.3)", cursor:"pointer", fontSize:9 },
   bankCard:{ background:"rgba(212,175,55,0.06)", border:"1px solid rgba(212,175,55,0.15)", borderRadius:9, padding:"11px 13px" },
-  bankLabel:{ fontSize:10, color:"rgba(255,255,255,0.35)", marginBottom:5, letterSpacing:"0.5px" },
-  bankAmount:{ fontSize:21, fontWeight:700, color:"#D4AF37", cursor:"pointer", display:"flex", alignItems:"center", gap:7 },
-  editHint:{ fontSize:12, color:"rgba(212,175,55,0.35)", fontWeight:400 },
+  bankLabel:{ fontSize:10, color:T.textMuted, marginBottom:5, letterSpacing:"0.5px" },
+  bankAmount:{ fontSize:21, fontWeight:700, color:T.gold, cursor:"pointer", display:"flex", alignItems:"center", gap:7 },
+  editHint:{ fontSize:12, color:T.gold, opacity:0.5, fontWeight:400 },
   bankInput:{ background:"rgba(255,255,255,0.07)", border:"1px solid rgba(212,175,55,0.3)", borderRadius:6, padding:"4px 8px", color:"#D4AF37", fontSize:17, fontWeight:700, width:"100%", fontFamily:"'DM Sans',sans-serif" },
   bankSave:{ background:"#D4AF37", border:"none", borderRadius:6, padding:"4px 10px", color:"#080810", cursor:"pointer", fontWeight:700 },
-  bankMeta:{ fontSize:11, color:"rgba(255,255,255,0.3)", marginTop:5 },
+  bankMeta:{ fontSize:11, color:T.textMuted, marginTop:5 },
   nav:{ display:"flex", flexDirection:"column", gap:3 },
   navBtn:{ display:"flex", alignItems:"center", gap:9, padding:"9px 11px", borderRadius:7, border:"none", background:"transparent", color:T.textMuted, fontSize:13, cursor:"pointer", textAlign:"left", fontFamily:"'DM Sans',sans-serif" },
   navBtnOn:{ background:"rgba(212,175,55,0.1)", color:"#D4AF37", border:"1px solid rgba(212,175,55,0.18)" },
   sideBot:{ padding:14 },
-  warnBox:{ background:"rgba(239,68,68,0.05)", border:"1px solid rgba(239,68,68,0.15)", borderRadius:8, padding:"9px 11px" },
-  warnTitle:{ fontSize:10.5, fontWeight:600, color:"#fca5a5", marginBottom:4 },
-  warnText:{ fontSize:9.5, color:"rgba(255,255,255,0.25)", lineHeight:1.55 },
+  warnBox:{ background:"rgba(239,68,68,0.05)", border:"1px solid rgba(239,68,68,0.15)", borderRadius:10, padding:"13px 14px" },
+  warnTitle:{ fontSize:11.5, fontWeight:700, color:T.bg==="#080810"?"#fca5a5":"#dc2626", marginBottom:6 },
+  warnText:{ fontSize:10.5, color:T.bg==="#080810"?"rgba(255,255,255,0.45)":"rgba(100,20,20,0.7)", lineHeight:1.6 },
   topBar:{ display:"flex", alignItems:"center", gap:6, padding:"8px 12px", borderBottom:`1px solid ${T.border}`, flexShrink:0, background:T.bgTopBar },
   sportBtn:{ padding:"5px 11px", borderRadius:18, border:`1px solid ${T.border}`, background:"transparent", color:T.textMuted, fontSize:12, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" },
   sportBtnOn:{ background:"rgba(212,175,55,0.12)", border:"1px solid rgba(212,175,55,0.3)", color:"#D4AF37" },
