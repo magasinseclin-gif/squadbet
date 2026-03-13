@@ -635,7 +635,7 @@ const ob = {
   levelGrid:{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 },
   levelBtn:{ display:"flex", flexDirection:"column", alignItems:"center", gap:5, padding:"14px 10px", background:"rgba(255,255,255,0.03)", border:"1px solid rgba(212,175,55,0.1)", borderRadius:14, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", transition:"all 0.2s", minHeight:90 },
   levelBtnOn:{ background:"rgba(212,175,55,0.12)", border:"1px solid rgba(212,175,55,0.4)", boxShadow:"0 0 16px rgba(212,175,55,0.1)" },
-  levelLabel:{ fontSize:13, fontWeight:600, color:T.text },
+  levelLabel:{ fontSize:13, fontWeight:600, color:"rgba(255,255,255,0.8)" },
   levelDesc:{ fontSize:10.5, color:"rgba(255,255,255,0.35)", textAlign:"center" },
   btn:{ background:"linear-gradient(135deg,#D4AF37,#8B7320)", border:"none", borderRadius:12, padding:"15px 20px", color:"#080810", fontWeight:700, fontSize:15, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", transition:"opacity 0.2s", minHeight:50 },
   btnBack:{ background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:12, padding:"15px 16px", color:"rgba(255,255,255,0.4)", fontWeight:500, fontSize:14, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", minHeight:50 },
@@ -694,6 +694,8 @@ export default function BettingAdvisor() {
   const isMobile = useIsMobile();
   const { theme, toggle: toggleTheme, isDark } = useTheme();
   const T = isDark ? THEME_DARK : THEME_LIGHT;
+  const s = getS(T);
+  const m = getM(T);
 
   const [view, setView] = useState("chat");
   const [sport, setSport] = useState("all");
@@ -1130,7 +1132,7 @@ export default function BettingAdvisor() {
 }
 
 // ─── DESKTOP STYLES ───────────────────────────────────────────────────────────
-const s = {
+const getS = (T) => ({
   bgGrid:{ position:"fixed", inset:0, backgroundImage:`linear-gradient(${T.gridLine} 1px,transparent 1px),linear-gradient(90deg,${T.gridLine} 1px,transparent 1px)`, backgroundSize:"48px 48px", pointerEvents:"none", zIndex:0 },
   sidebar:{ width:230, background:T.bgSidebar, borderRight:`1px solid ${T.border}`, display:"flex", flexDirection:"column", justifyContent:"space-between", transition:T.transition },
   sideTop:{ padding:"18px 14px", display:"flex", flexDirection:"column", gap:18 },
@@ -1195,10 +1197,10 @@ const s = {
   loseBtn:{ background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.22)", borderRadius:8, width:36, height:36, color:"#ef4444", cursor:"pointer", fontWeight:700, fontSize:16 },
   statsGrid:{ display:"grid", gap:10, marginBottom:14 },
   statCard:{ background:T.bgCard, border:`1px solid ${T.border}`, borderRadius:12, padding:"16px 12px", display:"flex", flexDirection:"column", alignItems:"center", gap:5, textAlign:"center" },
-};
+});
 
 // ─── MOBILE-ONLY STYLES ───────────────────────────────────────────────────────
-const m = {
+const getM = (T) => ({
   topBar:{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 16px", paddingTop:"calc(10px + env(safe-area-inset-top, 0px))", background:T.bgTopBar, borderBottom:`1px solid ${T.border}`, flexShrink:0, zIndex:5, transition:T.transition },
   topBarName:{ fontFamily:"'Playfair Display',serif", fontSize:15, color:"#D4AF37" },
   topBarSub:{ fontSize:11, color:"rgba(255,255,255,0.35)", marginTop:1 },
@@ -1206,4 +1208,4 @@ const m = {
   bottomNav:{ display:"flex", alignItems:"stretch", background:T.bgBottomNav, borderTop:`1px solid ${T.borderNav}`, paddingBottom:"env(safe-area-inset-bottom, 0px)", flexShrink:0, zIndex:10, transition:T.transition },
   navBtn:{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2, padding:"10px 4px", border:"none", background:"transparent", color:T.textMuted, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", minHeight:56, WebkitTapHighlightColor:"transparent" },
   navBtnOn:{ color:"#D4AF37" },
-};
+});
