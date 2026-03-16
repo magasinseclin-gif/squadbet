@@ -723,8 +723,12 @@ export default function BettingAdvisor() {
 
   const [view, setView] = useState("chat");
   const [sport, setSport] = useState("all");
-  const [messages, setMessages] = useState([]);
-  const [history, setHistory] = useState([]);
+  const [messages, setMessages] = useState(() => {
+    try { const m = localStorage.getItem("squadbet_messages"); return m ? JSON.parse(m) : []; } catch(e) { return []; }
+  });
+  const [history, setHistory] = useState(() => {
+    try { const h = localStorage.getItem("squadbet_history"); return h ? JSON.parse(h) : []; } catch(e) { return []; }
+  });
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [showSugg, setShowSugg] = useState(true);
@@ -749,7 +753,7 @@ export default function BettingAdvisor() {
   }), []);
 
   useEffect(() => {
-    if (profile && messages.length === 0) setMessages([getInitialMsg(profile)]);
+    if (profile && messages.length === 0) { const saved = localStorage.getItem("squadbet_messages"); if (!saved || JSON.parse(saved).length === 0) setMessages([getInitialMsg(profile)]); }
   }, [profile, getInitialMsg, messages.length]);
 
   useEffect(() => {
@@ -760,6 +764,14 @@ export default function BettingAdvisor() {
   useEffect(() => {
     try { localStorage.setItem("squadbet_bets", JSON.stringify(bets)); } catch(e) {}
   }, [bets]);
+
+  useEffect(() => {
+    try { localStorage.setItem("squadbet_messages", JSON.stringify(messages)); } catch(e) {}
+  }, [messages]);
+
+  useEffect(() => {
+    try { localStorage.setItem("squadbet_history", JSON.stringify(history)); } catch(e) {}
+  }, [history]);
 
   useEffect(() => {
     if (bottomRef.current && view === "chat") {
@@ -863,7 +875,7 @@ export default function BettingAdvisor() {
                 <div style={s.profilePseudo}>👤 {profile.pseudo}</div>
                 <div style={s.profileNiveau}>{LEVELS.find(l=>l.id===profile.niveau)?.icon} {LEVELS.find(l=>l.id===profile.niveau)?.label}</div>
               </div>
-              <button style={s.profileReset} title="Changer de profil" onClick={() => { try{localStorage.removeItem("squadbet_profile"); localStorage.removeItem("squadbet_bets");}catch(e){} setProfile(null); setMessages([]); setBets([]); }}>✕</button>
+              <button style={s.profileReset} title="Changer de profil" onClick={() => { try{localStorage.removeItem("squadbet_profile"); localStorage.removeItem("squadbet_bets"); localStorage.removeItem("squadbet_messages"); localStorage.removeItem("squadbet_history");}catch(e){} setProfile(null); setMessages([]); setHistory([]); setBets([]); }}>✕</button>
             </div>
             <div style={s.bankCard}>
               <div style={s.bankLabel}>💰 Bankroll</div>
@@ -915,7 +927,7 @@ export default function BettingAdvisor() {
             <button onClick={toggleTheme} style={{ background:`rgba(212,175,55,${isDark?0.08:0.12})`, border:`1px solid ${T.border}`, borderRadius:8, width:36, height:36, cursor:"pointer", fontSize:16, display:"flex", alignItems:"center", justifyContent:"center", WebkitTapHighlightColor:"transparent" }}>
               {isDark ? "☀️" : "🌙"}
             </button>
-            <button style={{ ...m.topBarReset, color:T.textMuted, background:`rgba(212,175,55,${isDark?0.05:0.08})`, border:`1px solid ${T.border}` }} onClick={()=>{ try{localStorage.removeItem("squadbet_profile"); localStorage.removeItem("squadbet_bets");}catch(e){} setProfile(null); setMessages([]); setBets([]); }}>✕</button>
+            <button style={{ ...m.topBarReset, color:T.textMuted, background:`rgba(212,175,55,${isDark?0.05:0.08})`, border:`1px solid ${T.border}` }} onClick={()=>{ try{localStorage.removeItem("squadbet_profile"); localStorage.removeItem("squadbet_bets"); localStorage.removeItem("squadbet_messages"); localStorage.removeItem("squadbet_history");}catch(e){} setProfile(null); setMessages([]); setHistory([]); setBets([]); }}>✕</button>
           </div>
         </div>
       )}
