@@ -735,7 +735,9 @@ export default function BettingAdvisor() {
   const [editingBR, setEditingBR] = useState(false);
   const [showAddBet, setShowAddBet] = useState(false);
   const [newBet, setNewBet] = useState({ match:"", sport:"football", type:"", cote:"", mise:"" });
-  const [bets, setBets] = useState([]);
+  const [bets, setBets] = useState(() => {
+    try { const b = localStorage.getItem("squadbet_bets"); return b ? JSON.parse(b) : []; } catch(e) { return []; }
+  });
 
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
@@ -754,6 +756,10 @@ export default function BettingAdvisor() {
     if (profile) fetchDynamicSuggestions(sport);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sport, profile]);
+
+  useEffect(() => {
+    try { localStorage.setItem("squadbet_bets", JSON.stringify(bets)); } catch(e) {}
+  }, [bets]);
 
   useEffect(() => {
     if (bottomRef.current && view === "chat") {
@@ -857,7 +863,7 @@ export default function BettingAdvisor() {
                 <div style={s.profilePseudo}>👤 {profile.pseudo}</div>
                 <div style={s.profileNiveau}>{LEVELS.find(l=>l.id===profile.niveau)?.icon} {LEVELS.find(l=>l.id===profile.niveau)?.label}</div>
               </div>
-              <button style={s.profileReset} title="Changer de profil" onClick={() => { try{localStorage.removeItem("squadbet_profile")}catch(e){} setProfile(null); setMessages([]); }}>✕</button>
+              <button style={s.profileReset} title="Changer de profil" onClick={() => { try{localStorage.removeItem("squadbet_profile"); localStorage.removeItem("squadbet_bets");}catch(e){} setProfile(null); setMessages([]); setBets([]); }}>✕</button>
             </div>
             <div style={s.bankCard}>
               <div style={s.bankLabel}>💰 Bankroll</div>
@@ -909,7 +915,7 @@ export default function BettingAdvisor() {
             <button onClick={toggleTheme} style={{ background:`rgba(212,175,55,${isDark?0.08:0.12})`, border:`1px solid ${T.border}`, borderRadius:8, width:36, height:36, cursor:"pointer", fontSize:16, display:"flex", alignItems:"center", justifyContent:"center", WebkitTapHighlightColor:"transparent" }}>
               {isDark ? "☀️" : "🌙"}
             </button>
-            <button style={{ ...m.topBarReset, color:T.textMuted, background:`rgba(212,175,55,${isDark?0.05:0.08})`, border:`1px solid ${T.border}` }} onClick={()=>{ try{localStorage.removeItem("squadbet_profile")}catch(e){} setProfile(null); setMessages([]); }}>✕</button>
+            <button style={{ ...m.topBarReset, color:T.textMuted, background:`rgba(212,175,55,${isDark?0.05:0.08})`, border:`1px solid ${T.border}` }} onClick={()=>{ try{localStorage.removeItem("squadbet_profile"); localStorage.removeItem("squadbet_bets");}catch(e){} setProfile(null); setMessages([]); setBets([]); }}>✕</button>
           </div>
         </div>
       )}
