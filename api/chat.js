@@ -34,10 +34,7 @@ export default async function handler(req, res) {
       tools: [{
         google_search: {}
       }],
-      // tool_config force l'utilisation de l'outil (AUTO = Gemini décide, mais on le pousse via le prompt)
-      tool_config: {
-        function_calling_config: { mode: "AUTO" }
-      },
+
       generationConfig: {
         maxOutputTokens: max_tokens || 4000,
         temperature: 0.4, // Plus bas = plus factuel, moins d'invention
