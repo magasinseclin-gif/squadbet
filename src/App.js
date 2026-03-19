@@ -276,7 +276,7 @@ function ValueBetCalc({ isDark = true }) {
       const res = await fetch("/api/chat", {
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({ model:"gemini-1.5-flash", max_tokens:300, messages:[{role:"user",content:prompt}] }),
+        body:JSON.stringify({ model:"gemini-2.5-flash", max_tokens:300, messages:[{role:"user",content:prompt}] }),
       });
       const data = await res.json();
       const txt = data.content?.find(b=>b.type==="text")?.text || "";
@@ -319,7 +319,7 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
       const res = await fetch("/api/chat", {
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({ model:"gemini-1.5-flash", max_tokens:600, messages:[{role:"user",content:prompt}] }),
+        body:JSON.stringify({ model:"gemini-2.5-flash", max_tokens:600, messages:[{role:"user",content:prompt}] }),
       });
       const data = await res.json();
       const txt = data.content?.find(b=>b.type==="text")?.text || "";
@@ -710,7 +710,7 @@ export default function BettingAdvisor() {
       const res = await fetch("/api/chat", {
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({ model:"gemini-1.5-flash", max_tokens:200, messages:[{role:"user",content:prompt}] }),
+        body:JSON.stringify({ model:"gemini-2.5-flash", max_tokens:200, messages:[{role:"user",content:prompt}] }),
       });
       const data = await res.json();
       const txt = data.content?.find(b=>b.type==="text")?.text || "";
@@ -810,7 +810,7 @@ export default function BettingAdvisor() {
       const res = await fetch("/api/chat", {
         method:"POST",
         headers:{ "Content-Type":"application/json" },
-        body:JSON.stringify({ model:"gemini-1.5-flash", max_tokens:3000,
+        body:JSON.stringify({ model:"gemini-2.5-flash", max_tokens:3000,
           system: SYSTEM_PROMPT + `\n\nProfil utilisateur : pseudo "${profile.pseudo}", niveau "${profile.niveau}", bankroll actuelle ${bankroll}€.`,
           messages: updatedHist }),
       });
